@@ -174,8 +174,6 @@ public class MainActivity extends Activity {
     final Handler handler = new Handler(Looper.getMainLooper());
 
     FrameLayout root;
-    /** Touch-only car home screen drawn over the original TV home screen. */
-    CarHome carHome;
     ImageView wallView;
     /** Top shelf carousel: two crossfading backdrops + info panel. */
     ImageView heroBack, heroFront;
@@ -228,6 +226,7 @@ public class MainActivity extends Activity {
     View launchTile;
     static MainActivity activeInstance;
     SceneHome sceneHome;
+    TiggoHome tiggoHome;
     String activeLang;
     String activeLook;
 
@@ -298,8 +297,7 @@ public class MainActivity extends Activity {
         }
         buildGrid();
         applyLookMode();
-        carHome = new CarHome(this, screenW, screenH);
-        root.addView(carHome, match());
+        initTiggoHome();
         registerPackageReceiver();
         // Presentation mode: run the admin server if enabled, and honour "Start on boot".
         com.techgenius.tvoslauncher.present.Presenter.ensureRunning(this);
@@ -949,6 +947,48 @@ public class MainActivity extends Activity {
         }
     }
 
+    /**
+     * Installs the TIGGO 9 touch-first dashboard above the existing launcher chrome.
+     * Existing app discovery, settings, weather, wallpaper and launch flows remain shared.
+     */
+    void initTiggoHome() {
+        if (tiggoHome != null) return;
+        String currentWall = prefs.getString("wallpaper", "photo:tessellated-pavement.jpg");
+        if ("photo:tessellated-pavement.jpg".equals(currentWall)) {
+            wallStyle = "photo:vang-vieng-sunset.jpg";
+            prefs.edit().putString("wallpaper", wallStyle).apply();
+            setWallpaper(wallStyle);
+        }
+        tiggoHome = new TiggoHome(this);
+        int dimIndex = launchDimView != null ? root.indexOfChild(launchDimView) : -1;
+        if (dimIndex >= 0) root.addView(tiggoHome, dimIndex, match());
+        else root.addView(tiggoHome, match());
+        applyTiggoVisibility();
+    }
+
+    private void applyTiggoVisibility() {
+        if (tiggoHome == null || root == null) return;
+        wallView.setVisibility(View.VISIBLE);
+        if (wallView.getDrawable() == null) setWallpaper(wallStyle);
+        if (sceneHome != null) {
+            sceneHome.sceneView.setVisibility(View.GONE);
+            sceneHome.overlay.setVisibility(View.GONE);
+        }
+        if (heroBack != null) heroBack.setVisibility(View.GONE);
+        if (heroFront != null) heroFront.setVisibility(View.GONE);
+        if (heroScrim != null) heroScrim.setVisibility(View.GONE);
+        if (shade != null) shade.setVisibility(View.GONE);
+        if (scroll != null) scroll.setVisibility(View.GONE);
+        if (clockBox != null) clockBox.setVisibility(View.GONE);
+        if (weatherCard != null) weatherCard.setVisibility(View.GONE);
+        if (switcher != null) switcher.setVisibility(View.GONE);
+        if (heroInfo != null) heroInfo.setVisibility(View.GONE);
+        if (heroDots != null) heroDots.setVisibility(View.GONE);
+        tiggoHome.setVisibility(View.VISIBLE);
+        tiggoHome.bringToFront();
+        if (launchDimView != null) launchDimView.bringToFront();
+    }
+
     void applyLookMode() {
         boolean scenes = Scenes.isScenesLook(this);
         if (sceneHome != null) {
@@ -995,6 +1035,7 @@ public class MainActivity extends Activity {
         } else {
             focusIndex(focusedIndex);
         }
+        if (tiggoHome != null) applyTiggoVisibility();
     }
 
     void buildGrid() {
@@ -1068,6 +1109,7 @@ public class MainActivity extends Activity {
             row.addView(makeCell(shown.get(i), i, inDockRow, tileW, tileH, radius, labelH), lp);
         }
         content.setDescendantFocusability(ViewGroup.FOCUS_AFTER_DESCENDANTS);
+        if (tiggoHome != null) tiggoHome.refreshApps();
     }
 
     View makeCell(AppEntry a, int index, boolean inDock, int cardW, int cardH, float cardRadius, int cellLabelH) {
@@ -3592,15 +3634,37 @@ public class MainActivity extends Activity {
                 }).start();
     }
 
+    // ---------------------------------------------------------------- touch
+
+    private boolean touchSwallow;
+
+    @Override
+    public boolean dispatchTouchEvent(android.view.MotionEvent ev) {
+        int act = ev.getActionMasked();
+        if (act == android.view.MotionEvent.ACTION_DOWN) {
+            if (ambientShowcase) {
+                // First tap only brings the home screen back.
+                exitAmbientShowcase();
+                if (tiggoHome != null) applyTiggoVisibility();
+                touchSwallow = true;
+                return true;
+            }
+            if (idle) exitIdle();
+            resetIdle();
+        }
+        if (touchSwallow) {
+            if (act == android.view.MotionEvent.ACTION_UP || act == android.view.MotionEvent.ACTION_CANCEL) {
+                touchSwallow = false;
+            }
+            return true;
+        }
+        return super.dispatchTouchEvent(ev);
+    }
+
     // ---------------------------------------------------------------- keys
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent ev) {
-        if (carHome != null && ev != null && carHome.isOverlayOpen()
-                && ev.getKeyCode() == KeyEvent.KEYCODE_BACK) {
-            if (ev.getAction() == KeyEvent.ACTION_UP) carHome.closeOverlay();
-            return true;
-        }
         if (ambientShowcase) {
             if (ev == null) return true;
             int action = ev.getAction();
@@ -3624,6 +3688,18 @@ public class MainActivity extends Activity {
             return true;
         }
         if (launchOverlay != null) return true;
+        // Touch-only car build: arrow keys / OK from a stray remote or keyboard do nothing.
+        if (tiggoHome != null && pickerLayer == null && menuLayer == null) {
+            int dk = ev.getKeyCode();
+            if (dk >= KeyEvent.KEYCODE_DPAD_UP && dk <= KeyEvent.KEYCODE_DPAD_CENTER) return true;
+        }
+        if (tiggoHome != null && tiggoHome.isAllAppsOpen()) {
+            int key = ev.getKeyCode();
+            if (key == KeyEvent.KEYCODE_BACK || key == KeyEvent.KEYCODE_ESCAPE) {
+                if (ev.getAction() == KeyEvent.ACTION_UP) tiggoHome.closeAllApps();
+                return true;
+            }
+        }
         // Idle full-screen carousel: the first press only brings the Home Screen back.
         if (idle) {
             if (ev.getAction() == KeyEvent.ACTION_DOWN) {
@@ -4269,6 +4345,8 @@ public class MainActivity extends Activity {
         root.addView(layer, match());
         pickerLayer = layer;
         pickerCells = cells;
+        panel.setClickable(true);  // taps on the panel itself must not close it
+        layer.setOnClickListener(v -> closeProfilePicker());
         layer.setAlpha(0f);
         panel.setTranslationY(-dp(10));
         layer.animate().alpha(1f).setDuration(200).withEndAction(() -> {
@@ -4923,6 +5001,7 @@ public class MainActivity extends Activity {
     void resetIdle() {
         handler.removeCallbacks(idleRunnable);
         handler.removeCallbacks(lockIdleRunnable);
+        if (tiggoHome != null) return;  // car home: nothing slides away, no auto lock screen
         int sec = idleSeconds();
         if (sec > 0 && resumed) handler.postDelayed(idleRunnable, sec * 1000L);
         int lockMin = Scenes.getLockIdleMinutes(this);
@@ -5066,6 +5145,7 @@ public class MainActivity extends Activity {
         weatherCard.setVisibility(show ? View.VISIBLE : View.GONE);
         weatherCard.setData(d);
         if (show && !weatherCard.isFocused() && launchOverlay == null) weatherCard.setAlpha(weatherAlpha());
+        if (tiggoHome != null) tiggoHome.refreshWeather();
     }
 
     /** The full forecast: a glass panel opening from the weather card in the top-left corner (or top-right weather shortcut in Night Scenes / Classic Big Clock). */
@@ -5079,6 +5159,8 @@ public class MainActivity extends Activity {
                         showWeather();
                     }
                 });
+            } else {
+                toast("Погода отключена в настройках лаунчера");
             }
             return;
         }
@@ -5123,6 +5205,8 @@ public class MainActivity extends Activity {
         pickerLayer = layer;
         pickerCells = new ArrayList<>();
         pickerCells.add(panel);
+        layer.setOnClickListener(v -> closeProfilePicker());
+        panel.setOnClickListener(v -> closeProfilePicker());
         weatherOpen = true;
         weatherCard.animate().alpha(0f).setDuration(150).start();
         layer.setAlpha(0f);
