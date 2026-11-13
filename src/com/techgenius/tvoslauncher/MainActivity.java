@@ -174,6 +174,8 @@ public class MainActivity extends Activity {
     final Handler handler = new Handler(Looper.getMainLooper());
 
     FrameLayout root;
+    /** Touch-only car home screen drawn over the original TV home screen. */
+    CarHome carHome;
     ImageView wallView;
     /** Top shelf carousel: two crossfading backdrops + info panel. */
     ImageView heroBack, heroFront;
@@ -296,6 +298,8 @@ public class MainActivity extends Activity {
         }
         buildGrid();
         applyLookMode();
+        carHome = new CarHome(this, screenW, screenH);
+        root.addView(carHome, match());
         registerPackageReceiver();
         // Presentation mode: run the admin server if enabled, and honour "Start on boot".
         com.techgenius.tvoslauncher.present.Presenter.ensureRunning(this);
@@ -3592,6 +3596,11 @@ public class MainActivity extends Activity {
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent ev) {
+        if (carHome != null && ev != null && carHome.isOverlayOpen()
+                && ev.getKeyCode() == KeyEvent.KEYCODE_BACK) {
+            if (ev.getAction() == KeyEvent.ACTION_UP) carHome.closeOverlay();
+            return true;
+        }
         if (ambientShowcase) {
             if (ev == null) return true;
             int action = ev.getAction();
