@@ -954,7 +954,9 @@ public class MainActivity extends Activity {
     void initTiggoHome() {
         if (tiggoHome != null) return;
         String currentWall = prefs.getString("wallpaper", "photo:tessellated-pavement.jpg");
-        if ("photo:tessellated-pavement.jpg".equals(currentWall)) {
+        boolean firstTiggoRun = !prefs.getBoolean("tiggo9_wall_init", false);
+        if (firstTiggoRun) prefs.edit().putBoolean("tiggo9_wall_init", true).apply();
+        if (firstTiggoRun && "photo:tessellated-pavement.jpg".equals(currentWall)) {
             wallStyle = "photo:vang-vieng-sunset.jpg";
             prefs.edit().putString("wallpaper", wallStyle).apply();
             setWallpaper(wallStyle);
@@ -964,6 +966,16 @@ public class MainActivity extends Activity {
         if (dimIndex >= 0) root.addView(tiggoHome, dimIndex, match());
         else root.addView(tiggoHome, match());
         applyTiggoVisibility();
+    }
+
+    /** Wallpaper chosen from the TIGGO 9 home (bundled photo, gradient or own picture "tiggo:file"). */
+    void applyTiggoWallpaper(String style) {
+        if (style == null) return;
+        CustomMedia.setCustomWallpaperEnabled(this, CustomMedia.SCOPE_CLASSIC, false);
+        wallStyle = style;
+        prefs.edit().putString("wallpaper", style).apply();
+        setWallpaper(style);
+        if (tiggoHome != null) applyTiggoVisibility();
     }
 
     private void applyTiggoVisibility() {
@@ -1271,6 +1283,10 @@ public class MainActivity extends Activity {
     static final String FOLDER_SHUFFLE_WALL_KEY = "folder_shuffle";
 
     Bitmap makeWallpaper(String style) {
+        if (style != null && style.startsWith("tiggo:")) {
+            Bitmap own = TiggoHome.loadOwnWallpaper(this, style.substring(6));
+            if (own != null) return bakeShade(own);
+        }
         if (CustomMedia.isCustomWallpaperEnabled(this, CustomMedia.SCOPE_CLASSIC)) {
             int subMode = CustomMedia.getCustomWallpaperSubMode(this, CustomMedia.SCOPE_CLASSIC);
             if (subMode == CustomMedia.CUSTOM_MODE_REDDIT || Scenes.REDDIT_WALLPAPER_ID.equals(style)) {
@@ -3689,7 +3705,8 @@ public class MainActivity extends Activity {
         }
         if (launchOverlay != null) return true;
         // Touch-only car build: arrow keys / OK from a stray remote or keyboard do nothing.
-        if (tiggoHome != null && pickerLayer == null && menuLayer == null) {
+        boolean typing = getCurrentFocus() instanceof android.widget.EditText;
+        if (tiggoHome != null && pickerLayer == null && menuLayer == null && !typing) {
             int dk = ev.getKeyCode();
             if (dk >= KeyEvent.KEYCODE_DPAD_UP && dk <= KeyEvent.KEYCODE_DPAD_CENTER) return true;
         }
@@ -3699,6 +3716,7 @@ public class MainActivity extends Activity {
                 if (ev.getAction() == KeyEvent.ACTION_UP) tiggoHome.closeAllApps();
                 return true;
             }
+            if (typing) return super.dispatchKeyEvent(ev);  // typing a city name
         }
         // Idle full-screen carousel: the first press only brings the Home Screen back.
         if (idle) {
@@ -5498,6 +5516,10 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int req, int res, Intent data) {
         super.onActivityResult(req, res, data);
+        if (req == TiggoHome.REQ_WALLPAPER) {
+            if (tiggoHome != null && res == RESULT_OK) tiggoHome.onWallpaperPicked(data);
+            return;
+        }
         if (CustomMedia.onActivityResult(req, res, data)) return;
         if (req == SearchPanel.REQ_VOICE && res == RESULT_OK && search != null) search.onVoice(data);
     }
@@ -5505,6 +5527,12 @@ public class MainActivity extends Activity {
     @Override
     public void onRequestPermissionsResult(int req, String[] perms, int[] results) {
         super.onRequestPermissionsResult(req, perms, results);
+        if (req == Perms.REQ_LOCATION) {
+            boolean ok = false;
+            for (int r : results) if (r == PackageManager.PERMISSION_GRANTED) ok = true;
+            if (tiggoHome != null) tiggoHome.onLocationPermission(ok);
+            return;
+        }
         if (req == SearchPanel.REQ_MIC && search != null) {
             search.onMicPermission(results.length > 0 && results[0] == PackageManager.PERMISSION_GRANTED);
         } else if (req == 901) {

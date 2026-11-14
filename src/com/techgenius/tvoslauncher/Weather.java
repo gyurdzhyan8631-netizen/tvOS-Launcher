@@ -240,7 +240,8 @@ final class Weather {
                     place = p.getString(K_PLACE, "");
                 } else {
                     double[] ll = new double[2];
-                    place = locate(ll);
+                    String own = deviceLocate(c, ll);  // the car's own position first (GPS / network)
+                    place = own != null ? own : locate(ll);
                     lat = ll[0];
                     lon = ll[1];
                 }
@@ -514,6 +515,97 @@ final class Weather {
 
     // ---------------------------------------------------------------- location
 
+    /** Remembers a fresh position fix (used by automatic weather). */
+    static void saveFix(Context c, double lat, double lon) {
+        prefs(c).edit().putString("fix_lat", Double.toString(lat)).putString("fix_lon", Double.toString(lon))
+                .putLong("fix_at", System.currentTimeMillis()).apply();
+    }
+
+    /**
+     * The device's own position: last GPS / network fix, else a recent saved one. Returns the city
+     * name ("" when unknown) or null when there is no position or no location permission.
+     */
+    private static String deviceLocate(Context c, double[] out) {
+        try {
+            boolean fine = c.checkSelfPermission(android.Manifest.permission.ACCESS_FINE_LOCATION)
+                    == android.content.pm.PackageManager.PERMISSION_GRANTED;
+            boolean coarse = c.checkSelfPermission(android.Manifest.permission.ACCESS_COARSE_LOCATION)
+                    == android.content.pm.PackageManager.PERMISSION_GRANTED;
+            if (!fine && !coarse) return null;
+            android.location.Location best = null;
+            android.location.LocationManager lm =
+                    (android.location.LocationManager) c.getSystemService(Context.LOCATION_SERVICE);
+            if (lm != null) {
+                String[] providers = {android.location.LocationManager.GPS_PROVIDER,
+                        android.location.LocationManager.NETWORK_PROVIDER,
+                        android.location.LocationManager.PASSIVE_PROVIDER};
+                for (String prov : providers) {
+                    try {
+                        android.location.Location l = lm.getLastKnownLocation(prov);
+                        if (l != null && (best == null || l.getTime() > best.getTime())) best = l;
+                    } catch (Throwable ignored) {
+                        // provider unavailable
+                    }
+                }
+            }
+            SharedPreferences p = prefs(c);
+            double lat;
+            double lon;
+            if (best != null) {
+                lat = best.getLatitude();
+                lon = best.getLongitude();
+                saveFix(c, lat, lon);
+            } else if (p.contains("fix_lat") && p.contains("fix_lon")
+                    && System.currentTimeMillis() - p.getLong("fix_at", 0) < 3L * 24 * 3600 * 1000) {
+                lat = Double.parseDouble(p.getString("fix_lat", "0"));
+                lon = Double.parseDouble(p.getString("fix_lon", "0"));
+            } else {
+                return null;
+            }
+            out[0] = lat;
+            out[1] = lon;
+            String fixKey = String.format(Locale.US, "%.2f,%.2f", lat, lon);
+            if (fixKey.equals(p.getString("fix_key", "")) && p.contains("fix_place")) {
+                return p.getString("fix_place", "");
+            }
+            String name = reverse(c, lat, lon);
+            p.edit().putString("fix_key", fixKey).putString("fix_place", name).apply();
+            return name;
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    /** City name for a position (system geocoder, then a free web service). */
+    private static String reverse(Context c, double lat, double lon) {
+        try {
+            if (android.location.Geocoder.isPresent()) {
+                List<android.location.Address> a =
+                        new android.location.Geocoder(c, new Locale("ru")).getFromLocation(lat, lon, 1);
+                if (a != null && !a.isEmpty()) {
+                    android.location.Address ad = a.get(0);
+                    String n = ad.getLocality();
+                    if (n == null || n.isEmpty()) n = ad.getSubAdminArea();
+                    if (n == null || n.isEmpty()) n = ad.getAdminArea();
+                    if (n != null && !n.isEmpty()) return n;
+                }
+            }
+        } catch (Throwable ignored) {
+            // fall back to the web service
+        }
+        try {
+            JSONObject j = new JSONObject(get(String.format(Locale.US,
+                    "https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=%.5f&longitude=%.5f&localityLanguage=ru",
+                    lat, lon)));
+            String n = j.optString("city", "");
+            if (n.isEmpty()) n = j.optString("locality", "");
+            if (n.isEmpty()) n = j.optString("principalSubdivision", "");
+            return n;
+        } catch (Throwable t) {
+            return "";
+        }
+    }
+
     /** Approximate location from the internet address; returns the city name. */
     private static String locate(double[] out) throws Exception {
         String[] services = {"https://ipapi.co/json/", "https://ipwho.is/", "https://get.geojs.io/v1/ip/geo.json"};
@@ -539,7 +631,7 @@ final class Weather {
 
     /** City search for Settings (Open-Meteo geocoding). Call off the main thread. */
     static List<Place> search(String q) throws Exception {
-        JSONObject j = new JSONObject(get("https://geocoding-api.open-meteo.com/v1/search?count=8&language=en&name="
+        JSONObject j = new JSONObject(get("https://geocoding-api.open-meteo.com/v1/search?count=8&language=ru&name="
                 + URLEncoder.encode(q.trim(), "UTF-8")));
         List<Place> out = new ArrayList<>();
         JSONArray a = j.optJSONArray("results");
