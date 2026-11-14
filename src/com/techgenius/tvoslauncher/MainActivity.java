@@ -954,10 +954,11 @@ public class MainActivity extends Activity {
     void initTiggoHome() {
         if (tiggoHome != null) return;
         String currentWall = prefs.getString("wallpaper", "photo:tessellated-pavement.jpg");
-        boolean firstTiggoRun = !prefs.getBoolean("tiggo9_wall_init", false);
-        if (firstTiggoRun) prefs.edit().putBoolean("tiggo9_wall_init", true).apply();
-        if (firstTiggoRun && "photo:tessellated-pavement.jpg".equals(currentWall)) {
-            wallStyle = "photo:vang-vieng-sunset.jpg";
+        boolean firstCarWall = !prefs.getBoolean("tiggo9_car_wall", false);
+        if (firstCarWall) {
+            prefs.edit().putBoolean("tiggo9_car_wall", true).apply();
+            CustomMedia.setCustomWallpaperEnabled(this, CustomMedia.SCOPE_CLASSIC, false);
+            wallStyle = "photo:tiggo9-car.jpg";
             prefs.edit().putString("wallpaper", wallStyle).apply();
             setWallpaper(wallStyle);
         }

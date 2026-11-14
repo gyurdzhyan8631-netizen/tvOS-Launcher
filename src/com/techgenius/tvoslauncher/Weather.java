@@ -53,10 +53,8 @@ final class Weather {
 
     /** "c" or "f"; automatic picks Fahrenheit for the US, Liberia and Myanmar. */
     static String units(Context c) {
-        String u = prefs(c).getString(K_UNITS, "auto");
-        if (!u.equals("auto")) return u;
-        String cc = Locale.getDefault().getCountry();
-        return cc.equals("US") || cc.equals("LR") || cc.equals("MM") ? "f" : "c";
+        String u = prefs(c).getString(K_UNITS, "c");
+        return u.equals("f") ? "f" : "c";  // car build: Celsius unless Fahrenheit was chosen explicitly
     }
 
     static boolean manual(Context c) {
