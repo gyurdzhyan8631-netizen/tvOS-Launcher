@@ -513,6 +513,18 @@ final class Weather {
 
     // ---------------------------------------------------------------- location
 
+    /** Latitude of the chosen city or of the last position fix; NaN when unknown. */
+    static double latitude(Context c) {
+        try {
+            SharedPreferences p = prefs(c);
+            if (manual(c)) return p.getFloat(K_LAT, 0);
+            if (p.contains("fix_lat")) return Double.parseDouble(p.getString("fix_lat", "NaN"));
+        } catch (Throwable ignored) {
+            // unknown
+        }
+        return Double.NaN;
+    }
+
     /** Remembers a fresh position fix (used by automatic weather). */
     static void saveFix(Context c, double lat, double lon) {
         prefs(c).edit().putString("fix_lat", Double.toString(lat)).putString("fix_lon", Double.toString(lon))

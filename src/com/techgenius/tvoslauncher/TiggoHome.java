@@ -4,6 +4,7 @@ import android.bluetooth.BluetoothAdapter;
 import android.content.ClipData;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
@@ -13,12 +14,16 @@ import android.graphics.LinearGradient;
 import android.graphics.Shader;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
+import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.RippleDrawable;
+import android.graphics.drawable.TransitionDrawable;
 import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
+import android.media.AudioManager;
 import android.net.Uri;
 import android.provider.Settings;
+import android.util.DisplayMetrics;
 import android.util.TypedValue;
 import android.view.DragEvent;
 import android.view.Gravity;
@@ -41,6 +46,7 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -57,7 +63,7 @@ final class TiggoHome extends FrameLayout {
     static final int REQ_WALLPAPER = 9511;
 
     private static final String PREF_HOME_ORDER = "tiggo9_home_order";
-    private static final String PREF_DOCK = "tiggo9_dock2_";
+    private static final String PREF_DOCK = "tiggo9_dock3_";
     private static final String PREF_WALL = "tiggo9_wall";
     private static final String PREF_TILE_GLASS = "tiggo9_tile_glass";
     private static final int WHITE = 0xFFFFFFFF;
@@ -65,32 +71,59 @@ final class TiggoHome extends FrameLayout {
     // Each entry lists alternative packages ("tv|phone"): the first one that is installed wins.
     private static final String[] DEFAULT_PACKAGES = {
             "com.google.android.youtube.tv|com.google.android.youtube",
-            "com.netflix.ninja|com.netflix.mediaclient",
-            "com.amazon.amazonvideo.livingroom|com.amazon.avod.thirdpartyclient",
-            "ru.kinopoisk",
             "com.android.vending",
-            "com.spotify.tv.android|com.spotify.music"
+            "com.netflix.ninja|com.netflix.mediaclient",
+            "ru.kinopoisk"
     };
 
-    // Side rail and bottom dock: 0 home, 1 all apps, 2 navigator, 3 music, 4 video (rail also: 5 settings)
-    private static final String[] DOCK_NAMES = {"Домой", "Все приложения", "Навигатор", "Музыка", "Видео"};
+    // Bottom dock: eight shortcuts. The label is the default; the app is found by package or words.
+    private static final int DOCK_COUNT = 8;
+    private static final String[] DOCK_LABELS = {
+            "Автомобиль", "Телефон", "Настройки", "Файлы", "Chrome", "Telegram", "ADB TV", "TV Bro"};
     private static final String[][] DOCK_PACKAGES = {
-            {}, {},
-            {"ru.yandex.yandexnavi", "ru.yandex.yandexmaps", "ru.dublgis.dgismobile", "com.navitel",
-                    "com.waze", "com.sygic.aura", "net.osmand.plus", "net.osmand", "app.organicmaps",
-                    "com.google.android.apps.maps"},
-            {"ru.yandex.music", "com.spotify.music", "com.spotify.tv.android",
-                    "com.google.android.apps.youtube.music"},
-            {"org.videolan.vlc", "com.mxtech.videoplayer.ad", "ru.kinopoisk", "com.netflix.ninja"}
+            {},
+            {"com.google.android.dialer", "com.android.dialer", "com.samsung.android.dialer"},
+            {"com.android.settings"},
+            {"com.google.android.apps.nbu.files", "com.alphainventor.filemanager", "com.mixplorer",
+                    "com.lonelycatgames.xplore", "com.ghisler.android.TotalCommander"},
+            {"com.android.chrome"},
+            {"org.telegram.messenger", "org.telegram.messenger.web"},
+            {},
+            {"com.phlox.tvwebbrowser"}
     };
     private static final String[][] DOCK_WORDS = {
-            {}, {},
-            {"навигатор", "navigator", "navitel", "навител", "waze", "sygic", "osmand", "карты", "maps"},
-            {"музык", "music", "плеер", "player", "poweramp"},
-            {"видео", "video", "vlc", "кино", "плеер"}
+            {}, {"телефон", "phone", "dialer"}, {"настройки", "settings"},
+            {"проводник", "файлы", "files", "explorer"}, {"chrome"}, {"telegram", "телеграм"},
+            {"adb tv", "adbtv"}, {"tv bro", "tvbro"}
+    };
+
+    // Right column widgets
+    private static final String[] WIDGET_IDS = {"weather", "nav", "music"};
+    private static final String[] WIDGET_TITLES = {"Погода", "Навигация", "Музыка"};
+    private static final float[] WIDGET_BASE = {200f, 120f, 120f};
+    private static final float[] WIDGET_FACTOR = {0.75f, 1f, 1.3f};
+    private static final String PREF_WIDGETS = "tiggo9_widgets";
+    private static final String PREF_WSIZE = "tiggo9_wsize_";
+    private static final String PREF_WAPP = "tiggo9_wapp_";
+    private static final String[] NAV_PACKAGES = {
+            "ru.yandex.yandexnavi", "ru.yandex.yandexmaps", "ru.dublgis.dgismobile", "com.navitel",
+            "com.waze", "com.sygic.aura", "net.osmand.plus", "net.osmand", "app.organicmaps",
+            "com.google.android.apps.maps"};
+    private static final String[] NAV_WORDS = {
+            "навигатор", "navigator", "navitel", "навител", "waze", "sygic", "osmand", "карты", "maps"};
+    private static final String[] MUSIC_PACKAGES = {
+            "ru.yandex.music", "com.spotify.music", "com.spotify.tv.android",
+            "com.google.android.apps.youtube.music"};
+    private static final String[] MUSIC_WORDS = {"музык", "music", "плеер", "player", "poweramp"};
+
+    private static final String WALL_AUTO = "auto";
+    private static final String[] WALL_PRESETS = {
+            WALL_AUTO, "photo:tiggo9_autumn.jpg", "photo:tiggo9_winter.jpg", "photo:tiggo9_spring.jpg",
+            "photo:tiggo9_summer.jpg", "photo:tiggo9_night.jpg", "photo:tiggo9-car.jpg"
     };
     private static final String[] WALL_CAPTIONS = {
-            "TIGGO 9", "Фото 1", "Фото 2", "Фото 3", "Фото 4", "Фото 5",
+            "Авто: сезон и время суток", "Осень", "Зима", "Весна", "Лето", "Ночь", "TIGGO 9",
+            "Фото 1", "Фото 2", "Фото 3", "Фото 4", "Фото 5",
             "Аврора", "Полночь", "Закат", "Океан", "Графит"
     };
     private static final String CAR_WALLPAPER = "photo:tiggo9-car.jpg";
@@ -114,14 +147,21 @@ final class TiggoHome extends FrameLayout {
     private TextView weatherCondition;
     private ImageView weatherIcon;
     private TextView dateView;
-    private View vpnView;
+    private ImageView vpnView;
     private View wifiView;
     private View btView;
     private ImageView wallView;
+    private ImageView barsView;
+    private LinearLayout widgetCol;
+    private LinearLayout dockSlots;
+    private FrameLayout drawerPanel;
+    private GradientDrawable vpnPill;
+    private TextView vpnText;
+    private String shownStyle;
     private Bitmap wallBmp;
     private String wallStyle;
     private final int oy;
-    private int slotCount = 6;
+    private int slotCount = 4;
     private boolean lastBt;
     private boolean iconBusy;
     private boolean iconPending;
@@ -140,9 +180,9 @@ final class TiggoHome extends FrameLayout {
             w = host.getResources().getDisplayMetrics().widthPixels;
             h = host.getResources().getDisplayMetrics().heightPixels;
         }
-        this.k = Math.max(0.2f, Math.min(w / 1074f, h / 593f));
+        this.k = Math.max(0.2f, Math.min(w / 1672f, h / 941f));
         this.side = Math.round(w * 0.029f);
-        this.oy = Math.max(0, (h - Math.round(593 * this.k)) / 2);
+        this.oy = Math.max(0, (h - Math.round(941 * this.k)) / 2);
 
         setFocusable(false);
         setClipChildren(false);
@@ -166,24 +206,23 @@ final class TiggoHome extends FrameLayout {
         addView(layer, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-        final int contentLeft = m(155);
-        final int contentW = Math.max(m(500), w - contentLeft - m(29));
-        slotCount = Math.max(5, Math.min(8, Math.round(contentW / (float) Math.max(1, m(148)))));
+        layer.addView(buildLogo(), pos(m(330), m(60), m(60), oy + m(34)));
+        layer.addView(buildTopRight(), posEnd(ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT, m(39), oy + m(24)));
 
-        layer.addView(buildLogo(), pos(m(190), m(34), m(127), oy + m(31)));
-        layer.addView(buildStatusRow(), posEnd(ViewGroup.LayoutParams.WRAP_CONTENT, m(46), m(29), oy + m(22)));
-        layer.addView(buildRail(), pos(m(89), m(430), m(23), oy + m(105)));
-        layer.addView(buildClock(), pos(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
-                m(180), oy + m(124)));
-        layer.addView(buildWeatherCard(), pos(m(234), m(102), m(452), oy + m(133)));
         appStrip = new LinearLayout(host);
-        appStrip.setOrientation(LinearLayout.HORIZONTAL);
-        appStrip.setGravity(Gravity.TOP);
+        appStrip.setOrientation(LinearLayout.VERTICAL);
         appStrip.setClipChildren(false);
         appStrip.setClipToPadding(false);
-        layer.addView(appStrip, pos(contentW, m(130), contentLeft, oy + m(340)));
-        int dockW = Math.min(m(665), contentW);
-        layer.addView(buildDock(), pos(dockW, m(64), contentLeft + (contentW - dockW) / 2, oy + m(498)));
+        layer.addView(appStrip, pos(m(148), m(590), m(52), oy + m(143)));
+
+        widgetCol = new LinearLayout(host);
+        widgetCol.setOrientation(LinearLayout.VERTICAL);
+        widgetCol.setClipChildren(false);
+        widgetCol.setClipToPadding(false);
+        layer.addView(widgetCol, posEnd(m(366), m(560), m(38), oy + m(170)));
+
+        layer.addView(buildDock(), pos(Math.max(m(600), w - 2 * m(22)), m(139), m(22), oy + m(767)));
 
         allAppsLayer = new FrameLayout(host);
         allAppsLayer.setVisibility(GONE);
@@ -197,6 +236,7 @@ final class TiggoHome extends FrameLayout {
         addView(sheetLayer, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
+        buildWidgets();
         rebuildHomeApps();
         refreshWeather();
         updateDate();
@@ -322,81 +362,74 @@ final class TiggoHome extends FrameLayout {
         return text("TIGGO 9", 38, true);
     }
 
-    private View buildStatusRow() {
-        LinearLayout row = new LinearLayout(host);
-        row.setOrientation(LinearLayout.HORIZONTAL);
-        row.setGravity(Gravity.CENTER_VERTICAL);
-
-        GradientDrawable pill = new GradientDrawable();
-        pill.setColor(0x00000000);
-        pill.setCornerRadius(m(13));
-        pill.setStroke(Math.max(1, m(2)), WHITE);
-        TextView vpn = text("VPN", 15, true);
-        vpn.setGravity(Gravity.CENTER);
-        vpn.setBackground(new RippleDrawable(ColorStateList.valueOf(0x55FFFFFF), pill, rippleMask(m(13))));
-        vpn.setOnClickListener(v -> openSettings(Settings.ACTION_VPN_SETTINGS));
-        pressScale(vpn);
-        vpnView = vpn;
-        row.addView(vpn, lp(m(54), m(32)));
-
-        ImageView wifi = iconView(Glyphs.get("wifi", m(28), WHITE));
-        wifi.setBackground(rippleOnly(m(22)));
-        wifi.setOnClickListener(v -> openSettings(Settings.ACTION_WIFI_SETTINGS));
-        pressScale(wifi);
-        wifiView = wifi;
-        LinearLayout.LayoutParams wifiLp = lp(m(46), m(44));
-        wifiLp.leftMargin = m(14);
-        row.addView(wifi, wifiLp);
-
-        ImageView bt = iconView(TiggoIcons.bluetooth(m(26), WHITE));
-        bt.setBackground(rippleOnly(m(22)));
-        bt.setOnClickListener(v -> openSettings(Settings.ACTION_BLUETOOTH_SETTINGS));
-        pressScale(bt);
-        btView = bt;
-        LinearLayout.LayoutParams btLp = lp(m(40), m(44));
-        btLp.leftMargin = m(8);
-        row.addView(bt, btLp);
-
-        View divider = new View(host);
-        divider.setBackgroundColor(0xCCFFFFFF);
-        LinearLayout.LayoutParams divLp = lp(Math.max(1, m(2)), m(26));
-        divLp.leftMargin = m(14);
-        divLp.rightMargin = m(14);
-        row.addView(divider, divLp);
-
-        TextClock time = new TextClock(host);
-        time.setFormat24Hour("HH:mm");
-        time.setFormat12Hour("HH:mm");
-        time.setTextColor(Color.WHITE);
-        time.setTextSize(TypedValue.COMPLEX_UNIT_PX, 27 * k);
-        time.setTypeface(Ui.font(host, "regular"));
-        time.setIncludeFontPadding(false);
-        time.setShadowLayer(m(3), 0, m(1), 0x66000000);
-        row.addView(time);
-        return row;
+    private ImageView statusButton(Bitmap bmp, View.OnClickListener click) {
+        ImageView iv = iconView(bmp);
+        iv.setPadding(m(8), m(8), m(8), m(8));
+        iv.setBackground(rippleOnly(m(28)));
+        iv.setOnClickListener(click);
+        pressScale(iv);
+        return iv;
     }
 
-    private View buildClock() {
+    /** Transparent capsule (VPN, Wi-Fi, mobile signal, settings) and the large clock with the date. */
+    private View buildTopRight() {
+        LinearLayout box = new LinearLayout(host);
+        box.setOrientation(LinearLayout.HORIZONTAL);
+        box.setGravity(Gravity.CENTER_VERTICAL);
+
+        LinearLayout capsule = new LinearLayout(host);
+        capsule.setOrientation(LinearLayout.HORIZONTAL);
+        capsule.setGravity(Gravity.CENTER_VERTICAL);
+        capsule.setPadding(m(14), m(4), m(14), m(4));
+        capsule.setBackground(glass(m(36), 0x4D1E2C5C));
+
+        vpnView = statusButton(TiggoIcons.vpnShield(m(40), false),
+                v -> openSettings(Settings.ACTION_VPN_SETTINGS));
+        capsule.addView(vpnView, lp(m(62), m(58)));
+        wifiView = statusButton(Glyphs.get("wifi", m(36), WHITE),
+                v -> openSettings(Settings.ACTION_WIFI_SETTINGS));
+        capsule.addView(wifiView, lp(m(62), m(58)));
+        barsView = statusButton(TiggoIcons.bars(m(36), 0, WHITE),
+                v -> openSettings(Settings.ACTION_WIRELESS_SETTINGS));
+        capsule.addView(barsView, lp(m(62), m(58)));
+
+        View divider = new View(host);
+        divider.setBackgroundColor(0xAAFFFFFF);
+        LinearLayout.LayoutParams divLp = lp(Math.max(1, m(2)), m(34));
+        divLp.leftMargin = m(8);
+        divLp.rightMargin = m(8);
+        capsule.addView(divider, divLp);
+
+        capsule.addView(statusButton(Glyphs.get("gear", m(36), WHITE), v -> host.showControlCenter()),
+                lp(m(62), m(58)));
+        box.addView(capsule);
+
         LinearLayout clock = new LinearLayout(host);
         clock.setOrientation(LinearLayout.VERTICAL);
-        clock.setGravity(Gravity.START);
+        clock.setGravity(Gravity.END);
         TextClock time = new TextClock(host);
         time.setFormat24Hour("HH:mm");
         time.setFormat12Hour("HH:mm");
         time.setTextColor(Color.WHITE);
-        time.setTextSize(TypedValue.COMPLEX_UNIT_PX, 88 * k);
+        time.setTextSize(TypedValue.COMPLEX_UNIT_PX, 60 * k);
         time.setTypeface(Ui.font(host, "regular"));
         time.setIncludeFontPadding(false);
-        glassText(time, 88);
-        clock.addView(time);
-        dateView = text("", 25, false);
+        time.setGravity(Gravity.END);
+        time.setShadowLayer(m(6), 0, m(2), 0x66000000);
+        android.graphics.Paint probe = new android.graphics.Paint();
+        probe.setTypeface(Ui.font(host, "regular"));
+        probe.setTextSize(60 * k);
+        time.setMinWidth(Math.round(probe.measureText("00:00")) + m(10));  // never cut the minutes
+        clock.addView(time, lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        dateView = text("", 22, false);
+        dateView.setGravity(Gravity.END);
         dateView.setTextColor(Color.WHITE);
-        glassText(dateView, 25);
-        LinearLayout.LayoutParams dateLp = lp(ViewGroup.LayoutParams.WRAP_CONTENT,
+        clock.addView(dateView, lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        LinearLayout.LayoutParams clockLp = lp(ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
-        dateLp.topMargin = m(6);
-        clock.addView(dateView, dateLp);
-        return clock;
+        clockLp.leftMargin = m(26);
+        box.addView(clock, clockLp);
+        return box;
     }
 
     private void openSettings(String action) {
@@ -415,20 +448,30 @@ final class TiggoHome extends FrameLayout {
         if (dateView == null) return;
         try {
             Locale ru = new Locale("ru");
-            String s = new SimpleDateFormat("EEE, d MMM", ru).format(new Date());
-            if (!s.isEmpty()) s = s.substring(0, 1).toUpperCase(ru) + s.substring(1);
-            dateView.setText(s);
+            String raw = new SimpleDateFormat("EEE, d MMMM", ru).format(new Date());
+            StringBuilder sb = new StringBuilder();
+            boolean up = true;
+            for (char ch : raw.toCharArray()) {
+                if (up && Character.isLetter(ch)) {
+                    sb.append(Character.toUpperCase(ch));
+                    up = false;
+                } else {
+                    sb.append(ch);
+                    if (ch == ' ') up = true;
+                }
+            }
+            dateView.setText(sb.toString());
         } catch (Throwable ignored) {
             // keep the previous text
         }
     }
 
-    /** Real Wi-Fi / VPN / Bluetooth state in the top status row. */
+    /** Real Wi-Fi / VPN / mobile state in the status capsule. */
     @SuppressWarnings("deprecation")
     private void refreshStatus() {
         boolean vpn = false;
         boolean wifi = false;
-        boolean bt = true;
+        boolean cell = false;
         try {
             ConnectivityManager cm = (ConnectivityManager) host.getSystemService(Context.CONNECTIVITY_SERVICE);
             if (cm != null) {
@@ -439,31 +482,30 @@ final class TiggoHome extends FrameLayout {
                     boolean internet = nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET);
                     if (internet && (nc.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
                             || nc.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET))) wifi = true;
+                    if (internet && nc.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) cell = true;
                 }
             }
         } catch (Throwable ignored) {
             // leave everything dimmed
         }
-        try {
-            BluetoothAdapter adapter = BluetoothAdapter.getDefaultAdapter();
-            if (adapter != null) bt = adapter.isEnabled();
-        } catch (Throwable ignored) {
-            // permission missing: show it as available
-        }
-        if (statusKnown && vpn == lastVpn && wifi == lastWifi && bt == lastBt) return;
+        if (statusKnown && vpn == lastVpn && wifi == lastWifi && cell == lastCell) return;
         statusKnown = true;
         lastVpn = vpn;
         lastWifi = wifi;
-        lastBt = bt;
-        if (vpnView != null) vpnView.setAlpha(vpn ? 1f : 0.55f);
+        lastCell = cell;
+        if (vpnView != null) vpnView.setImageBitmap(TiggoIcons.vpnShield(m(40), vpn));
         if (wifiView != null) wifiView.setAlpha(wifi ? 1f : 0.45f);
-        if (btView != null) btView.setAlpha(bt ? 1f : 0.45f);
+        if (barsView != null) barsView.setImageBitmap(TiggoIcons.bars(m(36), cell ? 4 : 0, WHITE));
     }
 
     private final Runnable ticker = new Runnable() {
         @Override public void run() {
             refreshStatus();
-            if (++tickCount % 6 == 0) updateDate();
+            tickCount++;
+            if (tickCount % 6 == 0) updateDate();
+            if (tickCount % 12 == 0) refreshWeather();
+            if (tickCount % 60 == 0) checkAutoWallpaper();
+            if (tickCount % 120 == 0) Weather.refresh(host, false, TiggoHome.this::refreshWeather);
             postDelayed(this, 5000);
         }
     };
@@ -479,36 +521,223 @@ final class TiggoHome extends FrameLayout {
 
     private View buildWeatherCard() {
         LinearLayout card = new LinearLayout(host);
-        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setOrientation(LinearLayout.VERTICAL);
         card.setGravity(Gravity.CENTER_VERTICAL);
-        card.setPadding(m(14), m(8), m(16), m(8));
-        card.setBackground(pressable(m(26), 0x3D2B3F78));
+        card.setPadding(m(26), m(14), m(24), m(14));
+        card.setBackground(pressable(m(34), 0x3D2B3F78));
         card.setOnClickListener(v -> host.showWeather());
-        card.setOnLongClickListener(v -> {
-            openWeatherSheet();
-            return true;
-        });
         pressScale(card);
 
+        LinearLayout top = new LinearLayout(host);
+        top.setOrientation(LinearLayout.HORIZONTAL);
+        top.setGravity(Gravity.CENTER_VERTICAL);
         weatherIcon = new ImageView(host);
         weatherIcon.setScaleType(ImageView.ScaleType.FIT_CENTER);
-        card.addView(weatherIcon, lp(m(76), m(76)));
+        top.addView(weatherIcon, lp(m(96), m(96)));
+        LinearLayout col = new LinearLayout(host);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.setGravity(Gravity.CENTER_VERTICAL);
+        weatherTemp = text("--°", 54, false);
+        col.addView(weatherTemp, lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        weatherPlace = text("Погода", 24, false);
+        weatherPlace.setSingleLine(true);
+        weatherPlace.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        col.addView(weatherPlace, lp(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        LinearLayout.LayoutParams colLp = lp(0, ViewGroup.LayoutParams.WRAP_CONTENT);
+        colLp.weight = 1f;
+        colLp.leftMargin = m(14);
+        top.addView(col, colLp);
+        card.addView(top, lp(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        weatherCondition = text("", 18, false);
+        weatherCondition.setAlpha(0.9f);
+        weatherCondition.setSingleLine(true);
+        weatherCondition.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        LinearLayout.LayoutParams condLp = lp(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        condLp.topMargin = m(6);
+        card.addView(weatherCondition, condLp);
+        return card;
+    }
+
+    // ------------------------------------------------------------------ right column widgets
+
+    private int indexOfId(String id) {
+        for (int i = 0; i < WIDGET_IDS.length; i++) if (WIDGET_IDS[i].equals(id)) return i;
+        return -1;
+    }
+
+    private List<String> widgetOrder() {
+        List<String> out = new ArrayList<>();
+        String saved = host.prefs.getString(PREF_WIDGETS, "");
+        for (String id : saved.split(",")) {
+            if (indexOfId(id) >= 0 && !out.contains(id)) out.add(id);
+        }
+        for (String id : WIDGET_IDS) if (!out.contains(id)) out.add(id);
+        return out;
+    }
+
+    private void saveWidgetOrder(List<String> order) {
+        StringBuilder b = new StringBuilder();
+        for (String id : order) {
+            if (b.length() > 0) b.append(',');
+            b.append(id);
+        }
+        host.prefs.edit().putString(PREF_WIDGETS, b.toString()).apply();
+    }
+
+    private int widgetSize(String id) {
+        return Math.max(0, Math.min(2, host.prefs.getInt(PREF_WSIZE + id, 1)));
+    }
+
+    private void buildWidgets() {
+        if (widgetCol == null) return;
+        widgetCol.removeAllViews();
+        List<String> order = widgetOrder();
+        float avail = 560f;
+        float gap = 24f;
+        float total = gap * (order.size() - 1);
+        for (String id : order) total += WIDGET_BASE[indexOfId(id)] * WIDGET_FACTOR[widgetSize(id)];
+        float scale = total > avail ? avail / total : 1f;
+        boolean first = true;
+        for (final String id : order) {
+            int i = indexOfId(id);
+            View v = "weather".equals(id) ? buildWeatherCard() : buildCapsuleWidget(id);
+            v.setOnLongClickListener(x -> {
+                openWidgetSheet(id);
+                return true;
+            });
+            LinearLayout.LayoutParams wl = lp(ViewGroup.LayoutParams.MATCH_PARENT,
+                    m(WIDGET_BASE[i] * WIDGET_FACTOR[widgetSize(id)] * scale));
+            if (!first) wl.topMargin = m(gap * scale);
+            first = false;
+            widgetCol.addView(v, wl);
+        }
+        refreshWeather();
+    }
+
+    private MainActivity.AppEntry chosenWidgetApp(String id) {
+        String key = host.prefs.getString(PREF_WAPP + id, null);
+        if (key == null) return null;
+        for (MainActivity.AppEntry e : host.all.values()) if (key.equals(e.key)) return e;
+        return null;
+    }
+
+    private MainActivity.AppEntry findDefaultApp(String[] pkgs, String[] words) {
+        for (String pkg : pkgs) {
+            MainActivity.AppEntry e = findAnyByPackage(pkg);
+            if (e != null) return e;
+        }
+        for (String word : words) {
+            String w = word.toLowerCase(Locale.ROOT);
+            for (MainActivity.AppEntry e : host.all.values()) {
+                String label = e.label == null ? "" : e.label.toLowerCase(Locale.ROOT);
+                String pkg = e.pkg == null ? "" : e.pkg.toLowerCase(Locale.ROOT);
+                if (label.contains(w) || pkg.contains(w)) return e;
+            }
+        }
+        return null;
+    }
+
+    private View buildCapsuleWidget(final String id) {
+        final boolean nav = "nav".equals(id);
+        LinearLayout card = new LinearLayout(host);
+        card.setOrientation(LinearLayout.HORIZONTAL);
+        card.setGravity(Gravity.CENTER_VERTICAL);
+        card.setPadding(m(24), m(8), m(22), m(8));
+        card.setBackground(pressable(m(34), 0x3D2B3F78));
+
+        ImageView icon = new ImageView(host);
+        icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        MainActivity.AppEntry chosen = chosenWidgetApp(id);
+        Drawable chosenIcon = chosen != null ? iconOf(chosen) : null;
+        if (chosenIcon != null) icon.setImageDrawable(chosenIcon);
+        else icon.setImageBitmap(nav ? TiggoIcons.navTile(m(80)) : TiggoIcons.musicTile(m(80)));
+        card.addView(icon, lp(m(80), m(80)));
 
         LinearLayout col = new LinearLayout(host);
         col.setOrientation(LinearLayout.VERTICAL);
         col.setGravity(Gravity.CENTER_VERTICAL);
-        weatherTemp = text("--°", 38, false);
-        col.addView(weatherTemp, lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        weatherPlace = text("Погода", 20, false);
-        weatherPlace.setSingleLine(true);
-        weatherPlace.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        col.addView(weatherPlace, lp(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        weatherCondition = text("", 16, false);  // kept for the forecast panel, not shown on the card
+        col.addView(text(nav ? "Навигация" : "Музыка", 28, true));
+        TextView sub = text(nav ? "Построить маршрут" : "Слушать музыку", 19, false);
+        sub.setAlpha(0.85f);
+        col.addView(sub);
         LinearLayout.LayoutParams colLp = lp(0, ViewGroup.LayoutParams.WRAP_CONTENT);
         colLp.weight = 1f;
-        colLp.leftMargin = m(8);
+        colLp.leftMargin = m(20);
         card.addView(col, colLp);
+        card.addView(iconView(TiggoIcons.chevron(m(34), WHITE)), lp(m(36), m(36)));
+
+        card.setOnClickListener(v -> launchWidgetApp(id));
+        pressScale(card);
         return card;
+    }
+
+    private void launchWidgetApp(String id) {
+        MainActivity.AppEntry e = chosenWidgetApp(id);
+        if (e == null) {
+            e = "nav".equals(id) ? findDefaultApp(NAV_PACKAGES, NAV_WORDS)
+                    : findDefaultApp(MUSIC_PACKAGES, MUSIC_WORDS);
+        }
+        if (e != null) {
+            host.launchAnimated(this, e);
+            return;
+        }
+        host.toast(WIDGET_TITLES[indexOfId(id)] + ": приложение не найдено, выберите его");
+        chooseWidgetApp(id);
+    }
+
+    private void chooseWidgetApp(final String id) {
+        openAppGrid("Приложение для «" + WIDGET_TITLES[indexOfId(id)] + "»", e -> {
+            host.prefs.edit().putString(PREF_WAPP + id, e.key).apply();
+            buildWidgets();
+            closeAllApps();
+        }, "По умолчанию", () -> {
+            host.prefs.edit().remove(PREF_WAPP + id).apply();
+            buildWidgets();
+            closeAllApps();
+        });
+    }
+
+    /** Long press on a widget: move it up or down and change its size. */
+    private void openWidgetSheet(final String id) {
+        LinearLayout panel = beginSheet(WIDGET_TITLES[indexOfId(id)], false, 760);
+        final List<String> order = widgetOrder();
+        final int pos = order.indexOf(id);
+        if (pos > 0) {
+            panel.addView(sheetRow("Поднять выше", null, v -> {
+                Collections.swap(order, pos, pos - 1);
+                saveWidgetOrder(order);
+                buildWidgets();
+                openWidgetSheet(id);
+            }));
+        }
+        if (pos < order.size() - 1) {
+            panel.addView(sheetRow("Опустить ниже", null, v -> {
+                Collections.swap(order, pos, pos + 1);
+                saveWidgetOrder(order);
+                buildWidgets();
+                openWidgetSheet(id);
+            }));
+        }
+        String[] names = {"Маленький", "Средний", "Большой"};
+        int current = widgetSize(id);
+        for (int i = 0; i < 3; i++) {
+            final int size = i;
+            panel.addView(sheetRow((i == current ? "✓  " : "") + "Размер: " + names[i], null, v -> {
+                host.prefs.edit().putInt(PREF_WSIZE + id, size).apply();
+                buildWidgets();
+                openWidgetSheet(id);
+            }));
+        }
+        if ("weather".equals(id)) {
+            panel.addView(sheetRow("Город и автоопределение", null, v -> openWeatherSheet()));
+        } else {
+            MainActivity.AppEntry chosen = chosenWidgetApp(id);
+            panel.addView(sheetRow("Выбрать приложение", chosen != null ? chosen.label : "По умолчанию",
+                    v -> chooseWidgetApp(id)));
+        }
+        addDoneButton(panel);
     }
 
     void refreshWeather() {
@@ -517,15 +746,15 @@ final class TiggoHome extends FrameLayout {
         if (d == null || !Weather.enabled(host)) {
             weatherTemp.setText("--°");
             weatherPlace.setText("Выбрать город");
-            weatherCondition.setText("");
-            weatherIcon.setImageBitmap(Glyphs.get("cloud", m(56), WHITE));
+            weatherCondition.setText("Удерживайте — настройки");
+            weatherIcon.setImageBitmap(Glyphs.get("cloud", m(70), WHITE));
             return;
         }
         String unit = "f".equals(Weather.units(host)) ? "°F" : "°C";
-        weatherTemp.setText(d.temp + unit);
+        weatherTemp.setText((d.temp > 0 ? "+" : "") + d.temp + unit);
         weatherPlace.setText(d.place == null || d.place.isEmpty() ? "Моё местоположение" : d.place);
         weatherCondition.setText(Weather.describe(host, d.code, d.day));
-        weatherIcon.setImageBitmap(WeatherIcons.get(d.code, d.day, m(76)));
+        weatherIcon.setImageBitmap(WeatherIcons.get(d.code, d.day, m(96)));
     }
 
     // ------------------------------------------------------------------ home apps
@@ -590,32 +819,33 @@ final class TiggoHome extends FrameLayout {
         int count = Math.min(slotCount, homeApps.size());
         for (int i = 0; i < count; i++) {
             View cell = buildAppTile(homeApps.get(i), i);
-            appStrip.addView(cell, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+            appStrip.addView(cell, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
             homeTiles.add(cell);
         }
         for (int i = count; i < slotCount; i++) {
-            appStrip.addView(new View(host), new LinearLayout.LayoutParams(0, 1, 1f));
+            appStrip.addView(new View(host), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
         }
     }
 
     private View buildAppTile(final MainActivity.AppEntry entry, final int index) {
         FrameLayout cell = new FrameLayout(host);
         cell.setClipChildren(false);
+        cell.setPadding(0, m(5), 0, m(5));
         boolean glassOn = host.prefs.getBoolean(PREF_TILE_GLASS, true);
 
         LinearLayout tile = new LinearLayout(host);
         tile.setOrientation(LinearLayout.VERTICAL);
         tile.setGravity(Gravity.CENTER);
         tile.setPadding(m(6), m(10), m(6), m(10));
-        tile.setBackground(glassOn ? pressable(m(26), 0x3D2B3F78) : rippleOnly(m(26)));
+        tile.setBackground(glassOn ? pressable(m(30), 0x3D2B3F78) : rippleOnly(m(30)));
 
         ImageView icon = new ImageView(host);
         icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
         Drawable packIcon = iconOf(entry);
         if (packIcon != null) icon.setImageDrawable(packIcon);
-        tile.addView(icon, lp(m(70), m(70)));
+        tile.addView(icon, lp(m(72), m(72)));
 
-        TextView label = text(entry.label == null ? "" : entry.label, 19, true);
+        TextView label = text(entry.label == null ? "" : entry.label, 19, false);
         label.setGravity(Gravity.CENTER);
         label.setSingleLine(true);
         label.setEllipsize(android.text.TextUtils.TruncateAt.END);
@@ -624,8 +854,8 @@ final class TiggoHome extends FrameLayout {
         labelLp.topMargin = m(8);
         tile.addView(label, labelLp);
 
-        cell.addView(tile, new FrameLayout.LayoutParams(m(134), ViewGroup.LayoutParams.MATCH_PARENT,
-                Gravity.CENTER));
+        cell.addView(tile, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         tile.setOnClickListener(v -> host.launchAnimated(v, entry));
         tile.setOnLongClickListener(v -> {
             openHomeTileSheet(index);
@@ -635,106 +865,117 @@ final class TiggoHome extends FrameLayout {
         return cell;
     }
 
-    // ------------------------------------------------------------------ side rail and dock
+    // ------------------------------------------------------------------ bottom dock
 
-    private Bitmap navIcon(int id, int px) {
-        switch (id) {
-            case 0: return Glyphs.get("house", px, WHITE);
-            case 1: return Glyphs.get("apps", px, WHITE);
-            case 2: return TiggoIcons.car(px, WHITE);
-            case 3: return TiggoIcons.note(px, WHITE);
-            case 4: return TiggoIcons.video(px, WHITE);
-            default: return Glyphs.get("gear", px, WHITE);
-        }
+    private View dockDivider() {
+        View d = new View(host);
+        d.setBackgroundColor(0x66FFFFFF);
+        LinearLayout.LayoutParams lp = lp(Math.max(1, m(2)), m(86));
+        lp.leftMargin = m(16);
+        lp.rightMargin = m(16);
+        d.setLayoutParams(lp);
+        return d;
     }
 
-    private String navName(int id) {
-        return id >= 0 && id < DOCK_NAMES.length ? DOCK_NAMES[id] : "Настройки";
-    }
-
-    private void wireNav(View v, final int id) {
-        v.setContentDescription(navName(id));
-        v.setOnClickListener(x -> onNavClick(id));
-        if (id >= 2 && id <= 4) {
-            v.setOnLongClickListener(x -> {
-                chooseDockApp(id);
-                return true;
-            });
-        } else if (id == 5) {
-            v.setOnLongClickListener(x -> {
-                openSettingsSheet();
-                return true;
-            });
-        }
-        pressScale(v);
-    }
-
-    private View buildRail() {
-        LinearLayout rail = new LinearLayout(host);
-        rail.setOrientation(LinearLayout.VERTICAL);
-        rail.setGravity(Gravity.CENTER_HORIZONTAL);
-        rail.setPadding(0, m(6), 0, m(6));
-        rail.setBackground(glass(m(44), 0x4D1E2C5C));
-        for (int id = 0; id <= 5; id++) {
-            FrameLayout slot = new FrameLayout(host);
-            FrameLayout button = new FrameLayout(host);
-            if (id == 0) {
-                GradientDrawable ring = new GradientDrawable();
-                ring.setShape(GradientDrawable.OVAL);
-                ring.setColor(0x662B6BFF);
-                ring.setStroke(Math.max(2, m(3)), 0xFF5AA9FF);
-                button.setBackground(new RippleDrawable(ColorStateList.valueOf(0x66FFFFFF), ring, rippleMask(m(31))));
-            } else {
-                button.setBackground(rippleOnly(m(31)));
-            }
-            button.addView(iconView(navIcon(id, m(36))), new FrameLayout.LayoutParams(m(40), m(40), Gravity.CENTER));
-            wireNav(button, id);
-            slot.addView(button, new FrameLayout.LayoutParams(m(62), m(62), Gravity.CENTER));
-            rail.addView(slot, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
-        }
-        return rail;
+    private View dockAction(Bitmap bmp, String description, View.OnClickListener click) {
+        ImageView iv = iconView(bmp);
+        iv.setPadding(m(14), m(14), m(14), m(14));
+        iv.setBackground(rippleOnly(m(38)));
+        iv.setContentDescription(description);
+        iv.setOnClickListener(click);
+        pressScale(iv);
+        iv.setLayoutParams(lp(m(78), m(78)));
+        return iv;
     }
 
     private View buildDock() {
         LinearLayout dock = new LinearLayout(host);
         dock.setOrientation(LinearLayout.HORIZONTAL);
-        dock.setGravity(Gravity.CENTER);
-        dock.setPadding(m(14), m(4), m(14), m(4));
-        dock.setBackground(glass(m(32), 0x4D1E2C5C));
-        for (int id = 0; id <= 4; id++) {
-            FrameLayout item = new FrameLayout(host);
-            item.setBackground(rippleOnly(m(26)));
-            item.addView(iconView(navIcon(id, m(38))), new FrameLayout.LayoutParams(m(46), m(46), Gravity.CENTER));
-            if (id == 0) {
-                View active = new View(host);
-                GradientDrawable accent = new GradientDrawable();
-                accent.setColor(0xFF278BFF);
-                accent.setCornerRadius(m(2));
-                active.setBackground(accent);
-                item.addView(active, new FrameLayout.LayoutParams(m(108), Math.max(2, m(3)),
-                        Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL));
+        dock.setGravity(Gravity.CENTER_VERTICAL);
+        dock.setPadding(m(20), m(10), m(22), m(10));
+        dock.setBackground(glass(m(46), 0x4D1E2C5C));
+
+        FrameLayout all = new FrameLayout(host);
+        GradientDrawable circle = new GradientDrawable();
+        circle.setShape(GradientDrawable.OVAL);
+        circle.setColor(0x33FFFFFF);
+        circle.setStroke(Math.max(1, m(2)), 0x55FFFFFF);
+        all.setBackground(new RippleDrawable(ColorStateList.valueOf(0x66FFFFFF), circle, rippleMask(m(52))));
+        all.addView(iconView(TiggoIcons.dots9(m(54), WHITE)), new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        all.setContentDescription("Все приложения");
+        all.setOnClickListener(v -> openAllApps());
+        pressScale(all);
+        dock.addView(all, lp(m(104), m(104)));
+        dock.addView(dockDivider());
+
+        dockSlots = new LinearLayout(host);
+        dockSlots.setOrientation(LinearLayout.HORIZONTAL);
+        dockSlots.setGravity(Gravity.CENTER_VERTICAL);
+        dock.addView(dockSlots, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+        rebuildDockSlots();
+
+        dock.addView(dockDivider());
+        dock.addView(dockAction(TiggoIcons.monitor(m(50), WHITE), "Экран", v -> {
+            try {
+                host.startActivity(new Intent(Settings.ACTION_CAST_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            } catch (Throwable t) {
+                openSettings(Settings.ACTION_DISPLAY_SETTINGS);
             }
-            wireNav(item, id);
-            dock.addView(item, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
-        }
+        }));
+        dock.addView(dockAction(TiggoIcons.volume(m(50), WHITE), "Громкость", v -> {
+            try {
+                AudioManager am = (AudioManager) host.getSystemService(Context.AUDIO_SERVICE);
+                if (am != null) {
+                    am.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_SAME,
+                            AudioManager.FLAG_SHOW_UI);
+                }
+            } catch (Throwable ignored) {
+                host.toast("Громкость недоступна");
+            }
+        }));
+        dock.addView(dockAction(TiggoIcons.squareOutline(m(50), WHITE), "Настроить экран",
+                v -> openSettingsSheet()));
         return dock;
     }
 
-    private void onNavClick(int id) {
-        switch (id) {
-            case 0:
-                closeAllApps();
-                break;
-            case 1:
-                openAllApps();
-                break;
-            case 5:
-                host.showControlCenter();
-                break;
-            default:
-                launchDockSlot(id);
-                break;
+    private void rebuildDockSlots() {
+        if (dockSlots == null) return;
+        dockSlots.removeAllViews();
+        for (int i = 0; i < DOCK_COUNT; i++) {
+            dockSlots.addView(buildDockSlot(i),
+                    new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
         }
+    }
+
+    private View buildDockSlot(final int i) {
+        LinearLayout slot = new LinearLayout(host);
+        slot.setOrientation(LinearLayout.VERTICAL);
+        slot.setGravity(Gravity.CENTER);
+        slot.setBackground(rippleOnly(m(24)));
+        MainActivity.AppEntry chosen = chosenDockApp(i);
+        MainActivity.AppEntry shown = chosen != null ? chosen : defaultDockApp(i);
+        ImageView icon = new ImageView(host);
+        icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        Drawable d = shown != null ? iconOf(shown) : null;
+        if (d != null) icon.setImageDrawable(d);
+        else icon.setImageBitmap(i == 0 ? TiggoIcons.carTile(m(78)) : TiggoIcons.plusTile(m(78)));
+        slot.addView(icon, lp(m(78), m(78)));
+        TextView label = text(chosen != null && chosen.label != null ? chosen.label : DOCK_LABELS[i], 19, false);
+        label.setGravity(Gravity.CENTER);
+        label.setSingleLine(true);
+        label.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        LinearLayout.LayoutParams labelLp = lp(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT);
+        labelLp.topMargin = m(6);
+        slot.addView(label, labelLp);
+        slot.setOnClickListener(v -> launchDockSlot(i));
+        slot.setOnLongClickListener(v -> {
+            openDockSlotSheet(i);
+            return true;
+        });
+        pressScale(slot);
+        return slot;
     }
 
     private MainActivity.AppEntry chosenDockApp(int slot) {
@@ -746,19 +987,8 @@ final class TiggoHome extends FrameLayout {
 
     private MainActivity.AppEntry defaultDockApp(int slot) {
         if (slot < 0 || slot >= DOCK_PACKAGES.length) return null;
-        for (String pkg : DOCK_PACKAGES[slot]) {
-            MainActivity.AppEntry e = findAnyByPackage(pkg);
-            if (e != null) return e;
-        }
-        for (String word : DOCK_WORDS[slot]) {
-            String w = word.toLowerCase(Locale.ROOT);
-            for (MainActivity.AppEntry e : host.all.values()) {
-                String label = e.label == null ? "" : e.label.toLowerCase(Locale.ROOT);
-                String pkg = e.pkg == null ? "" : e.pkg.toLowerCase(Locale.ROOT);
-                if (label.contains(w) || pkg.contains(w)) return e;
-            }
-        }
-        return null;
+        if (DOCK_PACKAGES[slot].length == 0 && DOCK_WORDS[slot].length == 0) return null;
+        return findDefaultApp(DOCK_PACKAGES[slot], DOCK_WORDS[slot]);
     }
 
     private void launchDockSlot(int slot) {
@@ -768,20 +998,37 @@ final class TiggoHome extends FrameLayout {
             host.launchAnimated(this, e);
             return;
         }
-        host.toast(DOCK_NAMES[slot] + ": приложение не найдено, выберите его");
+        if (slot == 0) {
+            host.showControlCenter();
+            return;
+        }
+        host.toast(DOCK_LABELS[slot] + ": приложение не найдено, выберите его");
         chooseDockApp(slot);
     }
 
     private void chooseDockApp(final int slot) {
-        openAppGrid("Приложение для «" + DOCK_NAMES[slot] + "»", e -> {
+        openAppGrid("Приложение для «" + DOCK_LABELS[slot] + "»", e -> {
             host.prefs.edit().putString(PREF_DOCK + slot, e.key).apply();
-            host.toast(DOCK_NAMES[slot] + ": " + e.label);
+            rebuildDockSlots();
             closeAllApps();
         }, "По умолчанию", () -> {
             host.prefs.edit().remove(PREF_DOCK + slot).apply();
-            host.toast(DOCK_NAMES[slot] + ": выбор по умолчанию");
+            rebuildDockSlots();
             closeAllApps();
         });
+    }
+
+    private void openDockSlotSheet(final int slot) {
+        LinearLayout panel = beginSheet(DOCK_LABELS[slot], false, 760);
+        panel.addView(sheetRow("Заменить приложение", null, v -> chooseDockApp(slot)));
+        if (chosenDockApp(slot) != null) {
+            panel.addView(sheetRow("Сбросить на значение по умолчанию", null, v -> {
+                host.prefs.edit().remove(PREF_DOCK + slot).apply();
+                rebuildDockSlots();
+                closeSheet();
+            }));
+        }
+        addDoneButton(panel);
     }
 
     private void openByKeywords(String... words) {
@@ -817,81 +1064,144 @@ final class TiggoHome extends FrameLayout {
         openAppGrid("Все приложения", null, null, null);
     }
 
-    private void openAppGrid(String headingText, Pick pick, String resetLabel, Runnable resetAction) {
+    private void openAppGrid(final String headingText, final Pick pick, final String resetLabel,
+                             final Runnable resetAction) {
         closeSheet();
         allAppsLayer.removeAllViews();
-        allAppsLayer.setBackgroundColor(0xE9161C36);
-        LinearLayout panel = new LinearLayout(host);
-        panel.setOrientation(LinearLayout.VERTICAL);
-        panel.setPadding(side, m(24), side, m(20));
+        allAppsLayer.setBackgroundColor(0xA0101626);
+        allAppsLayer.setOnClickListener(v -> closeAllApps());
+        final DisplayMetrics dm = host.getResources().getDisplayMetrics();
+        int panelW = Math.min(Math.round(dm.widthPixels * 0.68f), m(1180));
+        int panelH = Math.min(Math.round(dm.heightPixels * 0.86f), m(820));
+        final FrameLayout panel = new FrameLayout(host);
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(0xF5F3F1F4);
+        bg.setCornerRadius(m(34));
+        panel.setBackground(bg);
+        panel.setClickable(true);
+        panel.setElevation(m(14));
+        drawerPanel = panel;
 
-        LinearLayout head = new LinearLayout(host);
-        head.setOrientation(LinearLayout.HORIZONTAL);
-        head.setGravity(Gravity.CENTER_VERTICAL);
-        TextView heading = text(headingText, 36, true);
-        head.addView(heading, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        if (resetLabel != null && resetAction != null) {
-            TextView reset = text(resetLabel, 22, true);
-            reset.setGravity(Gravity.CENTER);
-            reset.setBackground(pressable(m(26), 0x554D5A91));
-            reset.setOnClickListener(v -> resetAction.run());
-            pressScale(reset);
-            LinearLayout.LayoutParams rLp = lp(m(250), m(64));
-            rLp.rightMargin = m(14);
-            head.addView(reset, rLp);
-        }
-        TextView close = text("✕  Закрыть", 22, true);
-        close.setGravity(Gravity.CENTER);
-        close.setBackground(pressable(m(26), 0x554D5A91));
-        close.setOnClickListener(v -> closeAllApps());
-        pressScale(close);
-        head.addView(close, lp(m(220), m(64)));
-        panel.addView(head, lp(ViewGroup.LayoutParams.MATCH_PARENT, m(74)));
-        if (pick == null) {
-            TextView hint = text("Удерживайте приложение, чтобы добавить его на главный экран", 20, false);
-            hint.setAlpha(0.7f);
-            panel.addView(hint, lp(ViewGroup.LayoutParams.MATCH_PARENT, m(30)));
-        }
-
+        final LinearLayout content = new LinearLayout(host);
+        content.setOrientation(LinearLayout.VERTICAL);
+        content.setPadding(m(26), m(26), m(26), m(100));
         ScrollView scroll = new ScrollView(host);
         scroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
         scroll.setVerticalScrollBarEnabled(false);
-        LinearLayout grid = new LinearLayout(host);
-        grid.setOrientation(LinearLayout.VERTICAL);
-        grid.setPadding(0, 0, 0, m(24));
-        List<MainActivity.AppEntry> entries = new ArrayList<>(host.all.values());
-        int cellW = Math.max(1, m(170));
-        int available = Math.max(1, host.getResources().getDisplayMetrics().widthPixels - 2 * side);
-        int columns = Math.max(4, Math.min(8, available / cellW));
-        for (int i = 0; i < entries.size(); i += columns) {
+        scroll.addView(content);
+        panel.addView(scroll, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        final List<MainActivity.AppEntry> entries = new ArrayList<>(host.all.values());
+        Collections.sort(entries, (a, b) -> {
+            String x = a.label == null ? "" : a.label;
+            String y = b.label == null ? "" : b.label;
+            return x.compareToIgnoreCase(y);
+        });
+        final int inner = panelW - 2 * m(26);
+        final int columns = Math.max(5, Math.min(8, inner / Math.max(1, m(118))));
+        fillDrawer(content, entries, "", pick, headingText, resetLabel, resetAction, columns);
+
+        final EditText search = new EditText(host);
+        search.setHint("Поиск");
+        search.setHintTextColor(0xFF8A8A93);
+        search.setTextColor(0xFF222228);
+        search.setSingleLine(true);
+        search.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
+        search.setTextSize(TypedValue.COMPLEX_UNIT_PX, 20 * k);
+        search.setTypeface(Ui.font(host, "regular"));
+        search.setPadding(m(20), 0, m(20), 0);
+        GradientDrawable pill = new GradientDrawable();
+        pill.setColor(0xFFFFFFFF);
+        pill.setCornerRadius(m(26));
+        pill.setStroke(Math.max(1, m(1)), 0x22000000);
+        search.setBackground(pill);
+        search.setCompoundDrawablesWithIntrinsicBounds(
+                new BitmapDrawable(host.getResources(), TiggoIcons.search(m(26), 0xFF55555E)), null, null, null);
+        search.setCompoundDrawablePadding(m(10));
+        search.addTextChangedListener(new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) {
+            }
+
+            @Override public void onTextChanged(CharSequence s, int a, int b, int c) {
+            }
+
+            @Override public void afterTextChanged(android.text.Editable e) {
+                fillDrawer(content, entries, e.toString(), pick, headingText, resetLabel, resetAction, columns);
+            }
+        });
+        search.setOnFocusChangeListener((v, has) ->
+                panel.animate().translationY(has ? -dm.heightPixels * 0.26f : 0f).setDuration(180).start());
+        FrameLayout.LayoutParams sp = new FrameLayout.LayoutParams(m(340), m(52),
+                Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        sp.bottomMargin = m(22);
+        panel.addView(search, sp);
+
+        allAppsLayer.addView(panel, new FrameLayout.LayoutParams(panelW, panelH, Gravity.CENTER));
+        allAppsLayer.setVisibility(VISIBLE);
+        allAppsOpen = true;
+    }
+
+    private void fillDrawer(LinearLayout content, List<MainActivity.AppEntry> entries, String query,
+                            final Pick pick, String headingText, String resetLabel, final Runnable resetAction,
+                            int columns) {
+        content.removeAllViews();
+        if (pick != null) {
+            LinearLayout head = new LinearLayout(host);
+            head.setOrientation(LinearLayout.HORIZONTAL);
+            head.setGravity(Gravity.CENTER_VERTICAL);
+            TextView title = text(headingText, 26, true);
+            title.setTextColor(0xFF222228);
+            title.setShadowLayer(0, 0, 0, 0);
+            head.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+            if (resetLabel != null && resetAction != null) {
+                TextView reset = text(resetLabel, 19, true);
+                reset.setGravity(Gravity.CENTER);
+                reset.setTextColor(0xFF1B5FD6);
+                reset.setShadowLayer(0, 0, 0, 0);
+                reset.setOnClickListener(v -> resetAction.run());
+                head.addView(reset, lp(m(220), m(48)));
+            }
+            LinearLayout.LayoutParams hl = lp(ViewGroup.LayoutParams.MATCH_PARENT, m(56));
+            hl.bottomMargin = m(12);
+            content.addView(head, hl);
+        }
+        String q = query == null ? "" : query.trim().toLowerCase(Locale.ROOT);
+        List<MainActivity.AppEntry> shown = new ArrayList<>();
+        for (MainActivity.AppEntry e : entries) {
+            String label = e.label == null ? "" : e.label.toLowerCase(Locale.ROOT);
+            if (q.isEmpty() || label.contains(q)) shown.add(e);
+        }
+        for (int i = 0; i < shown.size(); i += columns) {
             LinearLayout row = new LinearLayout(host);
             row.setOrientation(LinearLayout.HORIZONTAL);
             for (int j = i; j < i + columns; j++) {
-                if (j >= entries.size()) {
+                if (j >= shown.size()) {
                     row.addView(new View(host), new LinearLayout.LayoutParams(0, 1, 1f));
                     continue;
                 }
-                final MainActivity.AppEntry entry = entries.get(j);
+                final MainActivity.AppEntry entry = shown.get(j);
                 LinearLayout tile = new LinearLayout(host);
                 tile.setOrientation(LinearLayout.VERTICAL);
-                tile.setGravity(Gravity.CENTER);
-                tile.setPadding(m(8), m(10), m(8), m(10));
-                tile.setBackground(rippleOnly(m(26)));
-                pressScale(tile);
-                FrameLayout iconBox = new FrameLayout(host);
+                tile.setGravity(Gravity.CENTER_HORIZONTAL);
+                tile.setPadding(m(4), m(10), m(4), m(10));
+                GradientDrawable rm = new GradientDrawable();
+                rm.setColor(Color.WHITE);
+                rm.setCornerRadius(m(20));
+                tile.setBackground(new RippleDrawable(ColorStateList.valueOf(0x22000000), null, rm));
                 ImageView iv = new ImageView(host);
                 iv.setScaleType(ImageView.ScaleType.FIT_CENTER);
-                iv.setPadding(0, 0, 0, 0);
-                Drawable gridIcon = iconOf(entry);
-                if (gridIcon != null) iv.setImageDrawable(gridIcon);
-                iconBox.addView(iv, new FrameLayout.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-                tile.addView(iconBox, lp(m(104), m(104)));
-                TextView name = text(entry.label, 20, false);
+                Drawable ic = iconOf(entry);
+                if (ic != null) iv.setImageDrawable(ic);
+                tile.addView(iv, lp(m(66), m(66)));
+                TextView name = text(entry.label == null ? "" : entry.label, 15, false);
+                name.setTextColor(0xFF2A2A31);
+                name.setShadowLayer(0, 0, 0, 0);
                 name.setGravity(Gravity.CENTER);
-                name.setMaxLines(2);
+                name.setSingleLine(true);
                 name.setEllipsize(android.text.TextUtils.TruncateAt.END);
-                LinearLayout.LayoutParams nameLp = lp(ViewGroup.LayoutParams.MATCH_PARENT, m(56));
+                LinearLayout.LayoutParams nameLp = lp(ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT);
                 nameLp.topMargin = m(6);
                 tile.addView(name, nameLp);
                 tile.setOnClickListener(v -> {
@@ -910,21 +1220,14 @@ final class TiggoHome extends FrameLayout {
                 }
                 row.addView(tile, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
             }
-            grid.addView(row);
+            content.addView(row);
         }
-        scroll.addView(grid);
-        LinearLayout.LayoutParams scrollLp = lp(ViewGroup.LayoutParams.MATCH_PARENT, 0);
-        scrollLp.weight = 1f;
-        scrollLp.topMargin = m(12);
-        panel.addView(scroll, scrollLp);
-        allAppsLayer.addView(panel, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        allAppsLayer.setVisibility(VISIBLE);
-        allAppsOpen = true;
     }
 
     void refreshApps() {
         rebuildHomeApps();
+        rebuildDockSlots();
+        buildWidgets();
         scheduleIconPack();
     }
 
@@ -1020,11 +1323,13 @@ final class TiggoHome extends FrameLayout {
 
     private void openSettingsSheet() {
         LinearLayout panel = beginSheet("Настроить главный экран", false, 820);
-        panel.addView(sheetRow("Обои", "Фото, градиенты или своё изображение", v -> openWallpaperSheet()));
+        panel.addView(sheetRow("Обои", "Авто по сезону и времени суток, фото, градиенты, своё изображение",
+                v -> openWallpaperSheet()));
         panel.addView(sheetRow("Погода", "Автоопределение по местоположению или свой город",
                 v -> openWeatherSheet()));
-        panel.addView(sheetRow("Навигатор, музыка, видео", "Какие приложения открывают кнопки панели и дока",
-                v -> openDockSheet()));
+        panel.addView(sheetRow("Нижняя панель", "Восемь приложений в доке", v -> openDockSheet()));
+        panel.addView(sheetRow("Виджеты", "Удерживайте виджет, чтобы переместить или изменить размер",
+                v -> openWidgetsResetSheet()));
         boolean glassOn = host.prefs.getBoolean(PREF_TILE_GLASS, true);
         panel.addView(sheetRow("Стеклянная подложка под иконками: " + (glassOn ? "вкл" : "выкл"),
                 "Только оригинальные иконки без подложки", v -> {
@@ -1036,13 +1341,29 @@ final class TiggoHome extends FrameLayout {
         addDoneButton(panel);
     }
 
+    private void openWidgetsResetSheet() {
+        LinearLayout panel = beginSheet("Виджеты", false, 820);
+        for (final String id : widgetOrder()) {
+            panel.addView(sheetRow(WIDGET_TITLES[indexOfId(id)], "Переместить, изменить размер",
+                    v -> openWidgetSheet(id)));
+        }
+        panel.addView(sheetRow("Сбросить порядок и размеры", null, v -> {
+            SharedPreferences.Editor ed = host.prefs.edit().remove(PREF_WIDGETS);
+            for (String id : WIDGET_IDS) ed.remove(PREF_WSIZE + id);
+            ed.apply();
+            buildWidgets();
+            closeSheet();
+        }));
+        addDoneButton(panel);
+    }
+
     private void openDockSheet() {
-        LinearLayout panel = beginSheet("Кнопки панели и дока", false, 820);
-        for (int i = 2; i <= 4; i++) {
+        LinearLayout panel = beginSheet("Нижняя панель", false, 820);
+        for (int i = 0; i < DOCK_COUNT; i++) {
             final int slot = i;
             MainActivity.AppEntry chosen = chosenDockApp(slot);
             String sub = chosen != null ? chosen.label : "Выбирается автоматически";
-            panel.addView(sheetRow(DOCK_NAMES[slot], sub, v -> chooseDockApp(slot)));
+            panel.addView(sheetRow(DOCK_LABELS[slot], sub, v -> chooseDockApp(slot)));
         }
         addDoneButton(panel);
     }
@@ -1073,11 +1394,11 @@ final class TiggoHome extends FrameLayout {
         gLp.rightMargin = m(18);
         strip.addView(gallery, gLp);
 
-        final int n = MainActivity.WALL_KEYS.length + 1;
+        final int n = WALL_PRESETS.length + MainActivity.WALL_KEYS.length;
         final ImageView[] thumbs = new ImageView[n];
         final String[] keys = new String[n];
         for (int i = 0; i < n; i++) {
-            final String key = i == 0 ? CAR_WALLPAPER : MainActivity.WALL_KEYS[i - 1];
+            final String key = i < WALL_PRESETS.length ? WALL_PRESETS[i] : MainActivity.WALL_KEYS[i - WALL_PRESETS.length];
             keys[i] = key;
             LinearLayout item = new LinearLayout(host);
             item.setOrientation(LinearLayout.VERTICAL);
@@ -1116,7 +1437,7 @@ final class TiggoHome extends FrameLayout {
                 final int idx = i;
                 Bitmap bm = null;
                 try {
-                    String key = keys[i];
+                    String key = effectiveStyle(keys[i]);
                     bm = key.startsWith("photo:")
                             ? Scenes.loadAssetBitmap(host, "backgrounds/" + key.substring(6), 480, 270)
                             : MainActivity.makeWallpaperBase(key);
@@ -1381,19 +1702,70 @@ final class TiggoHome extends FrameLayout {
     // ------------------------------------------------------------------ wallpaper (kept by the home itself)
 
     private void loadWallpaper() {
-        String style = host.prefs.getString(PREF_WALL, null);
-        if (style == null) style = host.prefs.getString("wallpaper", CAR_WALLPAPER);
-        if (style == null || style.isEmpty()) style = CAR_WALLPAPER;
+        if (!host.prefs.getBoolean("tiggo9_auto_init", false)) {
+            host.prefs.edit().putBoolean("tiggo9_auto_init", true).putString(PREF_WALL, WALL_AUTO).apply();
+        }
+        String style = host.prefs.getString(PREF_WALL, WALL_AUTO);
+        if (style == null || style.isEmpty()) style = WALL_AUTO;
         wallStyle = style;
-        showWallpaperAsync(style);
+        showWallpaperAsync(effectiveStyle(style));
+    }
+
+    private String effectiveStyle(String style) {
+        return WALL_AUTO.equals(style) ? autoWallpaperStyle() : style;
+    }
+
+    /** Season from the date and hemisphere (location), day or night from the weather data. */
+    private String autoWallpaperStyle() {
+        Calendar cal = Calendar.getInstance();
+        int month = cal.get(Calendar.MONTH);  // 0 = January
+        double lat = Weather.latitude(host);
+        if (!Double.isNaN(lat) && lat < 0) month = (month + 6) % 12;  // southern hemisphere
+        int season;  // 0 winter, 1 spring, 2 summer, 3 autumn
+        if (month == 11 || month <= 1) season = 0;
+        else if (month <= 4) season = 1;
+        else if (month <= 7) season = 2;
+        else season = 3;
+        int hour = cal.get(Calendar.HOUR_OF_DAY);
+        boolean night;
+        Weather.Data d = Weather.cached(host);
+        if (d != null && Weather.enabled(host)) night = !d.day;
+        else night = hour < 6 || hour >= 21;
+        if (night) return "photo:tiggo9_night.jpg";
+        if (season == 3 && hour >= 17) return "photo:tiggo9_autumn_evening.jpg";
+        switch (season) {
+            case 0: return "photo:tiggo9_winter.jpg";
+            case 1: return "photo:tiggo9_spring.jpg";
+            case 2: return "photo:tiggo9_summer.jpg";
+            default: return "photo:tiggo9_autumn.jpg";
+        }
+    }
+
+    private void checkAutoWallpaper() {
+        if (!WALL_AUTO.equals(wallStyle)) return;
+        String eff = autoWallpaperStyle();
+        if (!eff.equals(shownStyle)) {
+            showWallpaperAsync(eff);
+            host.applyTiggoWallpaper(eff);
+        }
     }
 
     private void showWallpaperAsync(final String style) {
+        if (style.equals(shownStyle) && wallBmp != null && !wallBmp.isRecycled()) return;
+        shownStyle = style;
         new Thread(() -> {
             final Bitmap b = decodeWallpaper(style);
             host.runOnUiThread(() -> {
-                if (b != null) {
-                    wallBmp = b;
+                if (b == null) return;
+                wallBmp = b;
+                Drawable old = wallView.getDrawable();
+                Drawable from = old instanceof TransitionDrawable ? ((TransitionDrawable) old).getDrawable(1) : old;
+                if (from != null) {
+                    TransitionDrawable td = new TransitionDrawable(
+                            new Drawable[]{from, new BitmapDrawable(host.getResources(), b)});
+                    wallView.setImageDrawable(td);
+                    td.startTransition(700);
+                } else {
                     wallView.setImageBitmap(b);
                 }
             });
@@ -1423,8 +1795,9 @@ final class TiggoHome extends FrameLayout {
     private void setOwnWallpaper(String style) {
         host.prefs.edit().putString(PREF_WALL, style).apply();
         wallStyle = style;
-        showWallpaperAsync(style);
-        host.applyTiggoWallpaper(style);  // keeps the blurred glass behind other panels in sync
+        String eff = effectiveStyle(style);
+        showWallpaperAsync(eff);
+        host.applyTiggoWallpaper(eff);  // keeps the blurred glass behind other panels in sync
     }
 
     @Override protected void onWindowVisibilityChanged(int visibility) {
@@ -1468,6 +1841,8 @@ final class TiggoHome extends FrameLayout {
             host.runOnUiThread(() -> {
                 iconBusy = false;
                 rebuildHomeApps();
+                rebuildDockSlots();
+                buildWidgets();
                 if (iconPending) {
                     iconPending = false;
                     scheduleIconPack();

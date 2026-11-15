@@ -251,4 +251,163 @@ final class TiggoIcons {
         }
         return b;
     }
+
+    /** Shield with VPN: green and filled while a VPN is connected, outlined and dim otherwise. */
+    static Bitmap vpnShield(int s, boolean on) {
+        Bitmap b = bmp(s);
+        Canvas c = new Canvas(b);
+        Path shield = new Path();
+        shield.moveTo(s * 0.50f, s * 0.04f);
+        shield.lineTo(s * 0.90f, s * 0.18f);
+        shield.lineTo(s * 0.90f, s * 0.50f);
+        shield.cubicTo(s * 0.90f, s * 0.75f, s * 0.70f, s * 0.88f, s * 0.50f, s * 0.97f);
+        shield.cubicTo(s * 0.30f, s * 0.88f, s * 0.10f, s * 0.75f, s * 0.10f, s * 0.50f);
+        shield.lineTo(s * 0.10f, s * 0.18f);
+        shield.close();
+        if (on) {
+            Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+            p.setShader(new LinearGradient(0, 0, 0, s, 0xFF5BEA9C, 0xFF1C9E55, Shader.TileMode.CLAMP));
+            c.drawPath(shield, p);
+        }
+        c.drawPath(shield, stroke(Color.argb(on ? 255 : 210, 255, 255, 255), s * 0.07f));
+        Paint t = fill(Color.argb(on ? 255 : 210, 255, 255, 255));
+        t.setTypeface(Typeface.DEFAULT_BOLD);
+        t.setTextAlign(Paint.Align.CENTER);
+        t.setTextSize(s * 0.27f);
+        c.drawText("VPN", s * 0.5f, s * 0.58f, t);
+        return b;
+    }
+
+    private static void rounded(Canvas c, int s, int top, int bottom) {
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        p.setShader(new LinearGradient(0, 0, 0, s, top, bottom, Shader.TileMode.CLAMP));
+        c.drawRoundRect(new RectF(0, 0, s, s), s * 0.24f, s * 0.24f, p);
+    }
+
+    private static void inside(Canvas c, Bitmap icon, int s, float scale) {
+        float size = s * scale;
+        float off = (s - size) / 2f;
+        c.drawBitmap(icon, null, new RectF(off, off, off + size, off + size), new Paint(Paint.FILTER_BITMAP_FLAG));
+    }
+
+    /** Blue navigation arrow. */
+    static Bitmap navTile(int s) {
+        Bitmap b = bmp(s);
+        Canvas c = new Canvas(b);
+        Paint p = new Paint(Paint.ANTI_ALIAS_FLAG);
+        p.setShader(new LinearGradient(0, 0, s, s, 0xFF63D2FF, 0xFF0A5CFF, Shader.TileMode.CLAMP));
+        p.setStrokeJoin(Paint.Join.ROUND);
+        p.setStyle(Paint.Style.FILL_AND_STROKE);
+        p.setStrokeWidth(s * 0.05f);
+        Path path = new Path();
+        path.moveTo(s * 0.50f, s * 0.10f);
+        path.lineTo(s * 0.88f, s * 0.88f);
+        path.lineTo(s * 0.50f, s * 0.68f);
+        path.lineTo(s * 0.12f, s * 0.88f);
+        path.close();
+        c.drawPath(path, p);
+        return b;
+    }
+
+    /** Purple tile with a white note. */
+    static Bitmap musicTile(int s) {
+        Bitmap b = bmp(s);
+        Canvas c = new Canvas(b);
+        rounded(c, s, 0xFF9A6BFF, 0xFF4A2BD8);
+        inside(c, note(s, Color.WHITE), s, 0.66f);
+        return b;
+    }
+
+    /** Purple tile with a white car. */
+    static Bitmap carTile(int s) {
+        Bitmap b = bmp(s);
+        Canvas c = new Canvas(b);
+        rounded(c, s, 0xFF7C7CFF, 0xFF3D3FC9);
+        inside(c, car(s, Color.WHITE), s, 0.66f);
+        return b;
+    }
+
+    /** Empty dock slot. */
+    static Bitmap plusTile(int s) {
+        Bitmap b = bmp(s);
+        Canvas c = new Canvas(b);
+        Paint bg = fill(0x33FFFFFF);
+        c.drawRoundRect(new RectF(0, 0, s, s), s * 0.24f, s * 0.24f, bg);
+        Paint st = stroke(0xCCFFFFFF, s * 0.07f);
+        c.drawLine(s * 0.5f, s * 0.3f, s * 0.5f, s * 0.7f, st);
+        c.drawLine(s * 0.3f, s * 0.5f, s * 0.7f, s * 0.5f, st);
+        return b;
+    }
+
+    /** 3x3 round dots (all apps). */
+    static Bitmap dots9(int s, int color) {
+        Bitmap b = bmp(s);
+        Canvas c = new Canvas(b);
+        Paint p = fill(color);
+        float step = s * 0.28f;
+        float start = s * 0.16f;
+        for (int r = 0; r < 3; r++) {
+            for (int col = 0; col < 3; col++) {
+                c.drawCircle(start + col * step + s * 0.07f, start + r * step + s * 0.07f, s * 0.075f, p);
+            }
+        }
+        return b;
+    }
+
+    static Bitmap chevron(int s, int color) {
+        Bitmap b = bmp(s);
+        Canvas c = new Canvas(b);
+        Path p = new Path();
+        p.moveTo(s * 0.35f, s * 0.2f);
+        p.lineTo(s * 0.65f, s * 0.5f);
+        p.lineTo(s * 0.35f, s * 0.8f);
+        c.drawPath(p, stroke(color, s * 0.09f));
+        return b;
+    }
+
+    static Bitmap monitor(int s, int color) {
+        Bitmap b = bmp(s);
+        Canvas c = new Canvas(b);
+        Paint st = stroke(color, s * 0.07f);
+        c.drawRoundRect(new RectF(s * 0.10f, s * 0.20f, s * 0.90f, s * 0.68f), s * 0.07f, s * 0.07f, st);
+        c.drawLine(s * 0.5f, s * 0.68f, s * 0.5f, s * 0.82f, st);
+        c.drawLine(s * 0.30f, s * 0.84f, s * 0.70f, s * 0.84f, st);
+        return b;
+    }
+
+    static Bitmap volume(int s, int color) {
+        Bitmap b = bmp(s);
+        Canvas c = new Canvas(b);
+        Paint p = fill(color);
+        Path sp = new Path();
+        sp.moveTo(s * 0.12f, s * 0.40f);
+        sp.lineTo(s * 0.30f, s * 0.40f);
+        sp.lineTo(s * 0.50f, s * 0.22f);
+        sp.lineTo(s * 0.50f, s * 0.78f);
+        sp.lineTo(s * 0.30f, s * 0.60f);
+        sp.lineTo(s * 0.12f, s * 0.60f);
+        sp.close();
+        c.drawPath(sp, p);
+        Paint st = stroke(color, s * 0.07f);
+        c.drawArc(new RectF(s * 0.40f, s * 0.34f, s * 0.70f, s * 0.66f), -50, 100, false, st);
+        c.drawArc(new RectF(s * 0.40f, s * 0.20f, s * 0.90f, s * 0.80f), -50, 100, false, st);
+        return b;
+    }
+
+    static Bitmap squareOutline(int s, int color) {
+        Bitmap b = bmp(s);
+        Canvas c = new Canvas(b);
+        c.drawRoundRect(new RectF(s * 0.24f, s * 0.24f, s * 0.76f, s * 0.76f), s * 0.08f, s * 0.08f,
+                stroke(color, s * 0.08f));
+        return b;
+    }
+
+    static Bitmap search(int s, int color) {
+        Bitmap b = bmp(s);
+        Canvas c = new Canvas(b);
+        Paint st = stroke(color, s * 0.10f);
+        c.drawCircle(s * 0.44f, s * 0.44f, s * 0.26f, st);
+        c.drawLine(s * 0.64f, s * 0.64f, s * 0.86f, s * 0.86f, st);
+        return b;
+    }
 }

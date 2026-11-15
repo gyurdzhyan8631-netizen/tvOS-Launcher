@@ -330,6 +330,26 @@ public class SettingsActivity extends Activity {
         backLp.topMargin = u(10);
         sideCol.addView(backBtn, backLp);
 
+        // Straight back to the home screen from any depth
+        TextView homeBtn = new TextView(this);
+        homeBtn.setText("Домой");
+        homeBtn.setTextColor(Color.WHITE);
+        homeBtn.setTypeface(Ui.font(this, "semibold"));
+        Ui.textSize(homeBtn, 15f);
+        homeBtn.setGravity(Gravity.CENTER);
+        GradientDrawable homeBg = new GradientDrawable();
+        homeBg.setCornerRadius(u(12));
+        homeBg.setColor(0x55278BFF);
+        homeBtn.setBackground(homeBg);
+        homeBtn.setClickable(true);
+        homeBtn.setOnClickListener(v -> finish());
+        LinearLayout.LayoutParams homeLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, u(40));
+        homeLp.leftMargin = u(8);
+        homeLp.rightMargin = u(8);
+        homeLp.topMargin = u(8);
+        sideCol.addView(homeBtn, homeLp);
+
         // ---------------- Right Main Column (.set-main) ----------------
         LinearLayout mainCol = new LinearLayout(this);
         mainCol.setOrientation(LinearLayout.VERTICAL);
