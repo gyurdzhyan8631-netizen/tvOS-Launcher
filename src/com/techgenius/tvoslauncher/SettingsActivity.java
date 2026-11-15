@@ -310,6 +310,26 @@ public class SettingsActivity extends Activity {
 
         buildSidebarRows();
 
+        // On-screen Back (a car screen has no remote): closes sub-menus first, then Settings
+        TextView backBtn = new TextView(this);
+        backBtn.setText(I18n.s(this, "Back", "Geri"));
+        backBtn.setTextColor(Color.WHITE);
+        backBtn.setTypeface(Ui.font(this, "semibold"));
+        Ui.textSize(backBtn, 15f);
+        backBtn.setGravity(Gravity.CENTER);
+        GradientDrawable backBg = new GradientDrawable();
+        backBg.setCornerRadius(u(12));
+        backBg.setColor(0x33FFFFFF);
+        backBtn.setBackground(backBg);
+        backBtn.setClickable(true);
+        backBtn.setOnClickListener(v -> onBackPressed());
+        LinearLayout.LayoutParams backLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, u(40));
+        backLp.leftMargin = u(8);
+        backLp.rightMargin = u(8);
+        backLp.topMargin = u(10);
+        sideCol.addView(backBtn, backLp);
+
         // ---------------- Right Main Column (.set-main) ----------------
         LinearLayout mainCol = new LinearLayout(this);
         mainCol.setOrientation(LinearLayout.VERTICAL);
@@ -574,7 +594,24 @@ public class SettingsActivity extends Activity {
                         .setDuration(160).start();
             });
 
-            row.setOnClickListener(v -> focusFirstRow());
+            row.setOnClickListener(v -> {
+                // Touch: a tap selects the section (focus-based switching only works with a remote)
+                if (rebuilding) return;
+                inRows = false;
+                liftedSceneId = null;
+                boolean changed = !secKey.equals(currentSection) || showingHiddenApps || activeSubMenu != null;
+                if (changed) {
+                    showingHiddenApps = false;
+                    activeSubMenu = null;
+                    subMenuStack.clear();
+                    subMenuParentFocusIdx.clear();
+                    currentSection = secKey;
+                    mainHeadView.setText(sectionTitle(currentSection));
+                    scheduleSidebarRebuild();
+                }
+                updateSidebarStyles();
+                updateHintText(false);
+            });
 
             LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);

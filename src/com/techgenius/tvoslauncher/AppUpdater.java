@@ -322,7 +322,7 @@ public final class AppUpdater {
         titleTv.setText(I18n.s(activity, "Update Available", "Güncelleme Mevcut") + " — v" + latestVersion);
         titleTv.setTextColor(0xFFFFFFFF);
         titleTv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 20);
-        titleTv.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD));
+        titleTv.setTypeface(Ui.sysFont(android.graphics.Typeface.BOLD));
         card.addView(titleTv);
 
         android.widget.TextView msgTv = new android.widget.TextView(activity);
@@ -342,7 +342,7 @@ public final class AppUpdater {
                         + modeNote));
         msgTv.setTextColor(0xCCFFFFFF);
         msgTv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14);
-        msgTv.setTypeface(android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL));
+        msgTv.setTypeface(Ui.sysFont(android.graphics.Typeface.NORMAL));
         msgTv.setLineSpacing(0f, 1.18f);
         android.widget.LinearLayout.LayoutParams msgLp = new android.widget.LinearLayout.LayoutParams(
                 android.view.ViewGroup.LayoutParams.MATCH_PARENT,
@@ -431,7 +431,7 @@ public final class AppUpdater {
         titleTv.setText(I18n.s(activity, "Changelog — v" + latestVersion, "Değişiklik Günlüğü — v" + latestVersion));
         titleTv.setTextColor(0xFFFFFFFF);
         titleTv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 19);
-        titleTv.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD));
+        titleTv.setTypeface(Ui.sysFont(android.graphics.Typeface.BOLD));
         card.addView(titleTv);
 
         android.widget.ScrollView scroll = new android.widget.ScrollView(activity);
@@ -445,7 +445,7 @@ public final class AppUpdater {
         bodyTv.setText(bodyText);
         bodyTv.setTextColor(0xDDFFFFFF);
         bodyTv.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 13);
-        bodyTv.setTypeface(android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.NORMAL));
+        bodyTv.setTypeface(Ui.sysFont(android.graphics.Typeface.NORMAL));
         bodyTv.setLineSpacing(0f, 1.18f);
         int sPad = Math.round(12 * d);
         bodyTv.setPadding(sPad, sPad, sPad, sPad);
@@ -513,7 +513,7 @@ public final class AppUpdater {
         android.widget.TextView btn = new android.widget.TextView(c);
         btn.setText(label);
         btn.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14);
-        btn.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD));
+        btn.setTypeface(Ui.sysFont(android.graphics.Typeface.BOLD));
         btn.setGravity(android.view.Gravity.CENTER);
         btn.setPadding(Math.round(22 * d), Math.round(11 * d), Math.round(22 * d), Math.round(11 * d));
         btn.setFocusable(true);

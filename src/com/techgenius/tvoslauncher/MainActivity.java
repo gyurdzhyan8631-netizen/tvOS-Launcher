@@ -247,6 +247,12 @@ public class MainActivity extends Activity {
         // The wallpaper/artwork always covers the screen: skip the window's own full-screen fill
         // (this Mali-450 GPU is fill-rate bound, so every hidden full-screen layer costs frames).
         getWindow().setBackgroundDrawable(null);
+        Ui.font(this, "regular");
+        android.content.SharedPreferences langPrefs = getSharedPreferences("settings", MODE_PRIVATE);
+        if (!langPrefs.getBoolean("tiggo9_ru_default", false)) {
+            I18n.setLang(this, I18n.LANG_RU);
+            langPrefs.edit().putBoolean("tiggo9_ru_default", true).apply();
+        }
         prefs = Profiles.homePrefs(this);
         String initLang = getIntent() != null ? getIntent().getStringExtra("lang") : null;
         if (initLang != null && !initLang.isEmpty()) {
@@ -5792,6 +5798,12 @@ public class MainActivity extends Activity {
             return;
         }
         Profiles.setCurrent(this, id);
+        Ui.font(this, "regular");
+        android.content.SharedPreferences langPrefs = getSharedPreferences("settings", MODE_PRIVATE);
+        if (!langPrefs.getBoolean("tiggo9_ru_default", false)) {
+            I18n.setLang(this, I18n.LANG_RU);
+            langPrefs.edit().putBoolean("tiggo9_ru_default", true).apply();
+        }
         prefs = Profiles.homePrefs(this);
         refreshAvatar();
         wallStyle = prefs.getString("wallpaper", "aurora");

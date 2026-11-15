@@ -1044,7 +1044,7 @@ public final class HomeDashboard {
         headerTitle.setText(I18n.t(host, "dash_prayer_times").toUpperCase(I18n.locale(host)));
         headerTitle.setTextColor(0xCC34D399);
         headerTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f);
-        headerTitle.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
+        headerTitle.setTypeface(Ui.sysFont(Typeface.BOLD));
         headerTitle.setLetterSpacing(0.06f);
         LinearLayout.LayoutParams htlp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         htlp.leftMargin = dp(host, 5);
@@ -1064,7 +1064,7 @@ public final class HomeDashboard {
         final TextView nextPrayerTv = new TextView(host);
         nextPrayerTv.setTextColor(Color.WHITE);
         nextPrayerTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12.5f);
-        nextPrayerTv.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
+        nextPrayerTv.setTypeface(Ui.sysFont(Typeface.BOLD));
         nextPrayerTv.setSingleLine(true);
         nextPrayerTv.setEllipsize(TextUtils.TruncateAt.END);
         LinearLayout.LayoutParams nplp = new LinearLayout.LayoutParams(
@@ -1175,7 +1175,7 @@ public final class HomeDashboard {
         headerTitle.setText(I18n.t(host, "dash_football").toUpperCase(I18n.locale(host)));
         headerTitle.setTextColor(0xCC38BDF8);
         headerTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f);
-        headerTitle.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
+        headerTitle.setTypeface(Ui.sysFont(Typeface.BOLD));
         headerTitle.setLetterSpacing(0.06f);
         LinearLayout.LayoutParams htlp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         htlp.leftMargin = dp(host, 5);
@@ -1184,7 +1184,7 @@ public final class HomeDashboard {
         final TextView badgeTv = new TextView(host);
         badgeTv.setTextColor(0xFF34D399);
         badgeTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 8.5f);
-        badgeTv.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
+        badgeTv.setTypeface(Ui.sysFont(Typeface.BOLD));
         head.addView(badgeTv);
 
         col.addView(head, new LinearLayout.LayoutParams(
@@ -1251,7 +1251,7 @@ public final class HomeDashboard {
                         right.setTextColor(0x99FFFFFF);
                     }
                     right.setTextSize(TypedValue.COMPLEX_UNIT_SP, 10f);
-                    right.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
+                    right.setTypeface(Ui.sysFont(Typeface.BOLD));
                     LinearLayout.LayoutParams scLp = new LinearLayout.LayoutParams(
                             ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
                     scLp.leftMargin = dp(host, 6);
@@ -1321,7 +1321,7 @@ public final class HomeDashboard {
         headerTitle.setText(I18n.t(host, "dash_latest_releases").toUpperCase(I18n.locale(host)));
         headerTitle.setTextColor(0xCCC084FC);
         headerTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f);
-        headerTitle.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
+        headerTitle.setTypeface(Ui.sysFont(Typeface.BOLD));
         headerTitle.setLetterSpacing(0.06f);
         headerTitle.setSingleLine(true);
         headerTitle.setEllipsize(TextUtils.TruncateAt.END);
@@ -1341,7 +1341,7 @@ public final class HomeDashboard {
         final TextView titleTv = new TextView(host);
         titleTv.setTextColor(Color.WHITE);
         titleTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f);
-        titleTv.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
+        titleTv.setTypeface(Ui.sysFont(Typeface.BOLD));
         titleTv.setMaxLines(2);
         titleTv.setEllipsize(TextUtils.TruncateAt.END);
         LinearLayout.LayoutParams ttlp = new LinearLayout.LayoutParams(
@@ -1461,7 +1461,7 @@ public final class HomeDashboard {
         headerTitle.setText(I18n.t(host, "weather").toUpperCase(I18n.locale(host)));
         headerTitle.setTextColor(0xCCFBBF24);
         headerTitle.setTextSize(TypedValue.COMPLEX_UNIT_SP, 9f);
-        headerTitle.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
+        headerTitle.setTypeface(Ui.sysFont(Typeface.BOLD));
         headerTitle.setLetterSpacing(0.06f);
         LinearLayout.LayoutParams htlp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
         htlp.leftMargin = dp(host, 5);
@@ -1495,7 +1495,7 @@ public final class HomeDashboard {
         final TextView tempTv = new TextView(host);
         tempTv.setTextColor(Color.WHITE);
         tempTv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 17.5f);
-        tempTv.setTypeface(Typeface.create("sans-serif-light", Typeface.BOLD));
+        tempTv.setTypeface(Ui.sysFont(Typeface.BOLD));
         tCol.addView(tempTv);
 
         final TextView condTv = new TextView(host);
@@ -1579,7 +1579,7 @@ public final class HomeDashboard {
                 + (pd.city != null && !pd.city.isEmpty() ? (" — " + pd.city) : ""));
         title.setTextColor(Color.WHITE);
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f);
-        title.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
+        title.setTypeface(Ui.sysFont(Typeface.BOLD));
         panel.addView(title);
 
         int[] next = computeNextPrayer(pd);
@@ -1624,7 +1624,7 @@ public final class HomeDashboard {
             tl.setText(times[i]);
             tl.setTextColor(Color.WHITE);
             tl.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f);
-            tl.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
+            tl.setTypeface(Ui.sysFont(Typeface.BOLD));
             r.addView(tl);
             table.addView(r, rlp);
         }
@@ -1679,7 +1679,7 @@ public final class HomeDashboard {
         title.setText(I18n.t(host, "dash_football"));
         title.setTextColor(Color.WHITE);
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f);
-        title.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
+        title.setTypeface(Ui.sysFont(Typeface.BOLD));
         panel.addView(title);
 
         // Top actions row: League filter + Favorite Teams picker
@@ -1767,7 +1767,7 @@ public final class HomeDashboard {
                 tms.setText((m.isFav ? "★ " : "") + m.homeTeam + "  vs  " + m.awayTeam);
                 tms.setTextColor(m.isFav ? 0xFFFDE047 : Color.WHITE);
                 tms.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f);
-                tms.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
+                tms.setTypeface(Ui.sysFont(Typeface.BOLD));
                 row.addView(tms, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
 
                 TextView st = new TextView(host);
@@ -1821,7 +1821,7 @@ public final class HomeDashboard {
         title.setText("★ " + I18n.t(host, "football_fav_teams"));
         title.setTextColor(Color.WHITE);
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 19f);
-        title.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
+        title.setTypeface(Ui.sysFont(Typeface.BOLD));
         panel.addView(title);
 
         ScrollView sv = new ScrollView(host);
@@ -1877,7 +1877,7 @@ public final class HomeDashboard {
         title.setText(I18n.t(host, "dash_latest_releases"));
         title.setTextColor(Color.WHITE);
         title.setTextSize(TypedValue.COMPLEX_UNIT_SP, 20f);
-        title.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
+        title.setTypeface(Ui.sysFont(Typeface.BOLD));
         panel.addView(title);
 
         ScrollView sv = new ScrollView(host);
@@ -1932,7 +1932,7 @@ public final class HomeDashboard {
         tv.setText(text);
         tv.setTextColor(Color.WHITE);
         tv.setTextSize(TypedValue.COMPLEX_UNIT_SP, 13.5f);
-        tv.setTypeface(Typeface.create("sans-serif-medium", Typeface.BOLD));
+        tv.setTypeface(Ui.sysFont(Typeface.BOLD));
         tv.setPadding(dp(c, 16), dp(c, 11), dp(c, 16), dp(c, 11));
         tv.setFocusable(true);
         final GradientDrawable bg = new GradientDrawable();

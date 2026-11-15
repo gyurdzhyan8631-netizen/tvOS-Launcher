@@ -218,6 +218,7 @@ public final class I18n {
         initSwedish();
         initKorean();
         initAzerbaijani();
+        I18nRu.fill(LANG_MAPS.get(LANG_RU));
     }
 
     private static void add(String en, String hi, String es, String fr, String de, String it, String ru, String pt, String ar, String ja, String zh) {

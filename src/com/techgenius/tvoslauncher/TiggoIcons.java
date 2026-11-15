@@ -202,6 +202,37 @@ final class TiggoIcons {
         return b;
     }
 
+    /** Bluetooth rune. */
+    static Bitmap bluetooth(int s, int color) {
+        Bitmap b = bmp(s);
+        Canvas c = new Canvas(b);
+        Paint st = stroke(color, s * 0.10f);
+        Path p = new Path();
+        p.moveTo(s * 0.28f, s * 0.30f);
+        p.lineTo(s * 0.72f, s * 0.68f);
+        p.lineTo(s * 0.50f, s * 0.88f);
+        p.lineTo(s * 0.50f, s * 0.12f);
+        p.lineTo(s * 0.72f, s * 0.32f);
+        p.lineTo(s * 0.28f, s * 0.70f);
+        c.drawPath(p, st);
+        return b;
+    }
+
+    /** Video: rounded screen with a play triangle cut out. */
+    static Bitmap video(int s, int color) {
+        Bitmap b = bmp(s);
+        Canvas c = new Canvas(b);
+        Paint p = fill(color);
+        c.drawRoundRect(new RectF(s * 0.08f, s * 0.20f, s * 0.92f, s * 0.80f), s * 0.14f, s * 0.14f, p);
+        Path tri = new Path();
+        tri.moveTo(s * 0.42f, s * 0.36f);
+        tri.lineTo(s * 0.42f, s * 0.64f);
+        tri.lineTo(s * 0.66f, s * 0.50f);
+        tri.close();
+        c.drawPath(tri, clear());
+        return b;
+    }
+
     /** 3x3 grid of rounded squares (the "all apps" tile in the mockup). */
     static Bitmap apps(int s, int color) {
         Bitmap b = bmp(s);

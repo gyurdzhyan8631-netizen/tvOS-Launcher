@@ -44,26 +44,36 @@ public final class Ui {
      * Inter (OFL, bundled): the closest open font to Apple's SF. "display" is Inter Display Bold for
      * large titles; "regular", "medium", "semibold" for UI and body text.
      */
+    private static android.graphics.Typeface baseMedium;
+
+    private static android.graphics.Typeface baseFont(Context c) {
+        if (baseMedium == null) {
+            try {
+                baseMedium = android.graphics.Typeface.createFromAsset(c.getAssets(), "fonts/GoogleSans-Medium.ttf");
+            } catch (RuntimeException e) {
+                baseMedium = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL);
+            }
+        }
+        return baseMedium;
+    }
+
+    /** Google Sans Medium (the car build's only font); bold-looking weights are synthesised from it. */
     public static android.graphics.Typeface font(Context c, String weight) {
         android.graphics.Typeface t = FONTS.get(weight);
         if (t == null) {
-            String file = weight.equals("clock") ? "Antonio-Light"
-                    : weight.equals("clock_duo") ? "Bahnschrift"
-                    : weight.equals("clock_rounded") ? "VarelaRound-Regular"
-                    : weight.equals("display") ? "InterDisplay-Bold" : weight.equals("medium") ? "Inter-Medium"
-                    : weight.equals("semibold") ? "Inter-SemiBold" : "Inter-Regular";
-            try {
-                t = android.graphics.Typeface.createFromAsset(c.getAssets(), "fonts/" + file + ".ttf");
-            } catch (RuntimeException e) {
-                try {
-                    t = android.graphics.Typeface.createFromAsset(c.getAssets(), "fonts\\" + file + ".ttf");
-                } catch (RuntimeException e2) {
-                    t = android.graphics.Typeface.DEFAULT;
-                }
-            }
+            android.graphics.Typeface base = baseFont(c);
+            boolean bold = weight.equals("display") || weight.equals("semibold") || weight.equals("bold");
+            t = bold ? android.graphics.Typeface.create(base, android.graphics.Typeface.BOLD) : base;
             FONTS.put(weight, t);
         }
         return t;
+    }
+
+    /** Same font for code that used the system "sans-serif" families. */
+    public static android.graphics.Typeface sysFont(int style) {
+        android.graphics.Typeface base = baseMedium;
+        if (base == null) return android.graphics.Typeface.create("sans-serif-medium", style);
+        return android.graphics.Typeface.create(base, style);
     }
 
     /**
