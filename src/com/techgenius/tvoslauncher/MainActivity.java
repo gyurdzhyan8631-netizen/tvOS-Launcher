@@ -508,7 +508,7 @@ public class MainActivity extends Activity {
         handler.post(weatherTick);
         LocalAdb.ensureKeepAliveWatchdog(this);
         LocalAdb.scheduleKeepAliveRepair(this, 1000L);
-        AppUpdater.checkAutoUpdateIfNeeded(this);
+        // automatic update checks are disabled in the car build
         SettingsActivity.prewarmCache(getApplicationContext());
         if (ambientShowcase || (getIntent() != null && "ambient".equals(getIntent().getStringExtra("panel")))) {
             if (getIntent() != null) getIntent().removeExtra("panel");

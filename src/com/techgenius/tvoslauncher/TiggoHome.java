@@ -40,6 +40,7 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextClock;
 import android.widget.TextView;
+import android.widget.VideoView;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -49,8 +50,10 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 
 /**
  * TIGGO 9 touch-first home screen.
@@ -78,6 +81,7 @@ final class TiggoHome extends FrameLayout {
 
     // Bottom dock: eight shortcuts. The label is the default; the app is found by package or words.
     private static final int DOCK_COUNT = 8;
+    private static final int DOCK_EXTRA_MAX = 16;
     private static final String[] DOCK_LABELS = {
             "Автомобиль", "Телефон", "Настройки", "Файлы", "Chrome", "Telegram", "ADB TV", "TV Bro"};
     private static final String[][] DOCK_PACKAGES = {
@@ -154,6 +158,11 @@ final class TiggoHome extends FrameLayout {
     private ImageView barsView;
     private LinearLayout widgetCol;
     private LinearLayout dockSlots;
+    private HorizontalScrollView dockScroll;
+    private List<MainActivity.AppEntry> dockPool = new ArrayList<>();
+    private FrameLayout promoLayer;
+    private VideoView promoVideo;
+    private boolean promoOpen;
     private FrameLayout drawerPanel;
     private GradientDrawable vpnPill;
     private TextView vpnText;
@@ -214,7 +223,7 @@ final class TiggoHome extends FrameLayout {
         appStrip.setOrientation(LinearLayout.VERTICAL);
         appStrip.setClipChildren(false);
         appStrip.setClipToPadding(false);
-        layer.addView(appStrip, pos(m(148), m(590), m(52), oy + m(143)));
+        layer.addView(appStrip, pos(m(168), m(590), m(46), oy + m(143)));
 
         widgetCol = new LinearLayout(host);
         widgetCol.setOrientation(LinearLayout.VERTICAL);
@@ -222,7 +231,12 @@ final class TiggoHome extends FrameLayout {
         widgetCol.setClipToPadding(false);
         layer.addView(widgetCol, posEnd(m(366), m(560), m(38), oy + m(170)));
 
-        layer.addView(buildDock(), pos(Math.max(m(600), w - 2 * m(22)), m(139), m(22), oy + m(767)));
+        FrameLayout.LayoutParams dockLp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, m(108), Gravity.TOP | Gravity.START);
+        dockLp.leftMargin = m(30);
+        dockLp.rightMargin = m(30);
+        dockLp.topMargin = oy + m(800);
+        layer.addView(buildDock(), dockLp);
 
         allAppsLayer = new FrameLayout(host);
         allAppsLayer.setVisibility(GONE);
@@ -357,9 +371,18 @@ final class TiggoHome extends FrameLayout {
             ImageView logo = new ImageView(host);
             logo.setScaleType(ImageView.ScaleType.FIT_START);
             logo.setImageBitmap(logoBmp);
+            logo.setOnLongClickListener(v -> {
+                openPromo();
+                return true;
+            });
             return logo;
         }
-        return text("TIGGO 9", 38, true);
+        TextView fallback = text("TIGGO 9", 38, true);
+        fallback.setOnLongClickListener(v -> {
+            openPromo();
+            return true;
+        });
+        return fallback;
     }
 
     private ImageView statusButton(Bitmap bmp, View.OnClickListener click) {
@@ -830,22 +853,22 @@ final class TiggoHome extends FrameLayout {
     private View buildAppTile(final MainActivity.AppEntry entry, final int index) {
         FrameLayout cell = new FrameLayout(host);
         cell.setClipChildren(false);
-        cell.setPadding(0, m(5), 0, m(5));
+        cell.setPadding(0, m(3), 0, m(3));
         boolean glassOn = host.prefs.getBoolean(PREF_TILE_GLASS, true);
 
         LinearLayout tile = new LinearLayout(host);
         tile.setOrientation(LinearLayout.VERTICAL);
         tile.setGravity(Gravity.CENTER);
-        tile.setPadding(m(6), m(10), m(6), m(10));
+        tile.setPadding(m(6), m(8), m(6), m(8));
         tile.setBackground(glassOn ? pressable(m(30), 0x3D2B3F78) : rippleOnly(m(30)));
 
         ImageView icon = new ImageView(host);
         icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
         Drawable packIcon = iconOf(entry);
         if (packIcon != null) icon.setImageDrawable(packIcon);
-        tile.addView(icon, lp(m(72), m(72)));
+        tile.addView(icon, lp(m(88), m(88)));
 
-        TextView label = text(entry.label == null ? "" : entry.label, 19, false);
+        TextView label = text(entry.label == null ? "" : entry.label, 20, false);
         label.setGravity(Gravity.CENTER);
         label.setSingleLine(true);
         label.setEllipsize(android.text.TextUtils.TruncateAt.END);
@@ -865,65 +888,94 @@ final class TiggoHome extends FrameLayout {
         return cell;
     }
 
-    // ------------------------------------------------------------------ bottom dock
+    // ------------------------------------------------------------------ bottom dock (swipe to flip)
+
+    private String dockLabel(int slot) {
+        return slot >= 0 && slot < DOCK_COUNT ? DOCK_LABELS[slot] : "Слот " + (slot + 1);
+    }
 
     private View dockDivider() {
         View d = new View(host);
         d.setBackgroundColor(0x66FFFFFF);
-        LinearLayout.LayoutParams lp = lp(Math.max(1, m(2)), m(86));
-        lp.leftMargin = m(16);
-        lp.rightMargin = m(16);
+        LinearLayout.LayoutParams lp = lp(Math.max(1, m(2)), m(62));
+        lp.leftMargin = m(12);
+        lp.rightMargin = m(12);
         d.setLayoutParams(lp);
         return d;
     }
 
     private View dockAction(Bitmap bmp, String description, View.OnClickListener click) {
         ImageView iv = iconView(bmp);
-        iv.setPadding(m(14), m(14), m(14), m(14));
-        iv.setBackground(rippleOnly(m(38)));
+        iv.setPadding(m(10), m(10), m(10), m(10));
+        iv.setBackground(rippleOnly(m(30)));
         iv.setContentDescription(description);
         iv.setOnClickListener(click);
         pressScale(iv);
-        iv.setLayoutParams(lp(m(78), m(78)));
+        iv.setLayoutParams(lp(m(62), m(62)));
         return iv;
     }
+
+    /** After a swipe the dock settles on a whole page of apps. */
+    private final Runnable snapRunnable = new Runnable() {
+        @Override public void run() {
+            if (dockScroll == null || dockSlots == null) return;
+            int slotW = Math.max(1, m(122));
+            int visible = Math.max(1, dockScroll.getWidth() / slotW);
+            int page = visible * slotW;
+            int x = dockScroll.getScrollX();
+            int max = Math.max(0, dockSlots.getWidth() - dockScroll.getWidth());
+            int target = Math.round(x / (float) page) * page;
+            target = Math.max(0, Math.min(max, target));
+            if (target != x) dockScroll.smoothScrollTo(target, 0);
+        }
+    };
 
     private View buildDock() {
         LinearLayout dock = new LinearLayout(host);
         dock.setOrientation(LinearLayout.HORIZONTAL);
         dock.setGravity(Gravity.CENTER_VERTICAL);
-        dock.setPadding(m(20), m(10), m(22), m(10));
-        dock.setBackground(glass(m(46), 0x4D1E2C5C));
+        dock.setPadding(m(14), m(6), m(16), m(6));
+        dock.setBackground(glass(m(40), 0x4D1E2C5C));
 
         FrameLayout all = new FrameLayout(host);
         GradientDrawable circle = new GradientDrawable();
         circle.setShape(GradientDrawable.OVAL);
         circle.setColor(0x33FFFFFF);
         circle.setStroke(Math.max(1, m(2)), 0x55FFFFFF);
-        all.setBackground(new RippleDrawable(ColorStateList.valueOf(0x66FFFFFF), circle, rippleMask(m(52))));
-        all.addView(iconView(TiggoIcons.dots9(m(54), WHITE)), new FrameLayout.LayoutParams(
+        all.setBackground(new RippleDrawable(ColorStateList.valueOf(0x66FFFFFF), circle, rippleMask(m(40))));
+        all.addView(iconView(TiggoIcons.dots9(m(42), WHITE)), new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         all.setContentDescription("Все приложения");
         all.setOnClickListener(v -> openAllApps());
         pressScale(all);
-        dock.addView(all, lp(m(104), m(104)));
+        dock.addView(all, lp(m(80), m(80)));
         dock.addView(dockDivider());
 
+        dockScroll = new HorizontalScrollView(host);
+        dockScroll.setHorizontalScrollBarEnabled(false);
+        dockScroll.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        dockScroll.setFillViewport(true);
         dockSlots = new LinearLayout(host);
         dockSlots.setOrientation(LinearLayout.HORIZONTAL);
         dockSlots.setGravity(Gravity.CENTER_VERTICAL);
-        dock.addView(dockSlots, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+        dockScroll.addView(dockSlots, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        dockScroll.setOnScrollChangeListener((v, x, y, ox, oy2) -> {
+            dockScroll.removeCallbacks(snapRunnable);
+            dockScroll.postDelayed(snapRunnable, 160);
+        });
+        dock.addView(dockScroll, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
         rebuildDockSlots();
 
         dock.addView(dockDivider());
-        dock.addView(dockAction(TiggoIcons.monitor(m(50), WHITE), "Экран", v -> {
+        dock.addView(dockAction(TiggoIcons.monitor(m(40), WHITE), "Экран", v -> {
             try {
                 host.startActivity(new Intent(Settings.ACTION_CAST_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
             } catch (Throwable t) {
                 openSettings(Settings.ACTION_DISPLAY_SETTINGS);
             }
         }));
-        dock.addView(dockAction(TiggoIcons.volume(m(50), WHITE), "Громкость", v -> {
+        dock.addView(dockAction(TiggoIcons.volume(m(40), WHITE), "Громкость", v -> {
             try {
                 AudioManager am = (AudioManager) host.getSystemService(Context.AUDIO_SERVICE);
                 if (am != null) {
@@ -934,40 +986,84 @@ final class TiggoHome extends FrameLayout {
                 host.toast("Громкость недоступна");
             }
         }));
-        dock.addView(dockAction(TiggoIcons.squareOutline(m(50), WHITE), "Настроить экран",
+        dock.addView(dockAction(TiggoIcons.squareOutline(m(40), WHITE), "Настроить экран",
                 v -> openSettingsSheet()));
         return dock;
     }
 
+    private List<MainActivity.AppEntry> sortedApps() {
+        List<MainActivity.AppEntry> list = new ArrayList<>(host.all.values());
+        Collections.sort(list, (a, b) -> {
+            String x = a.label == null ? "" : a.label;
+            String y = b.label == null ? "" : b.label;
+            return x.compareToIgnoreCase(y);
+        });
+        return list;
+    }
+
+    /** Eight shortcuts, then the remaining apps on further swipe pages. */
     private void rebuildDockSlots() {
         if (dockSlots == null) return;
-        dockSlots.removeAllViews();
+        Set<String> used = new HashSet<>();
+        for (MainActivity.AppEntry e : homeApps) if (e.key != null) used.add(e.key);
         for (int i = 0; i < DOCK_COUNT; i++) {
-            dockSlots.addView(buildDockSlot(i),
-                    new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
+            MainActivity.AppEntry a = chosenDockApp(i);
+            if (a == null) a = defaultDockApp(i);
+            if (a != null && a.key != null) used.add(a.key);
         }
+        for (String id : new String[]{"nav", "music"}) {
+            MainActivity.AppEntry a = chosenWidgetApp(id);
+            if (a == null) {
+                a = "nav".equals(id) ? findDefaultApp(NAV_PACKAGES, NAV_WORDS)
+                        : findDefaultApp(MUSIC_PACKAGES, MUSIC_WORDS);
+            }
+            if (a != null && a.key != null) used.add(a.key);
+        }
+        List<MainActivity.AppEntry> pool = new ArrayList<>();
+        for (MainActivity.AppEntry e : sortedApps()) {
+            if (e.key != null && !used.contains(e.key)) pool.add(e);
+            if (pool.size() >= DOCK_EXTRA_MAX) break;
+        }
+        dockPool = pool;
+        dockSlots.removeAllViews();
+        int total = DOCK_COUNT + pool.size();
+        for (int i = 0; i < total; i++) {
+            dockSlots.addView(buildDockSlot(i), new LinearLayout.LayoutParams(m(122),
+                    ViewGroup.LayoutParams.MATCH_PARENT));
+        }
+        if (dockScroll != null) dockScroll.scrollTo(0, 0);
+    }
+
+    private MainActivity.AppEntry dockShown(int slot) {
+        MainActivity.AppEntry chosen = chosenDockApp(slot);
+        if (chosen != null) return chosen;
+        if (slot < DOCK_COUNT) return defaultDockApp(slot);
+        int idx = slot - DOCK_COUNT;
+        return idx >= 0 && idx < dockPool.size() ? dockPool.get(idx) : null;
     }
 
     private View buildDockSlot(final int i) {
         LinearLayout slot = new LinearLayout(host);
         slot.setOrientation(LinearLayout.VERTICAL);
         slot.setGravity(Gravity.CENTER);
-        slot.setBackground(rippleOnly(m(24)));
+        slot.setBackground(rippleOnly(m(22)));
         MainActivity.AppEntry chosen = chosenDockApp(i);
-        MainActivity.AppEntry shown = chosen != null ? chosen : defaultDockApp(i);
+        MainActivity.AppEntry shown = dockShown(i);
         ImageView icon = new ImageView(host);
         icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
         Drawable d = shown != null ? iconOf(shown) : null;
         if (d != null) icon.setImageDrawable(d);
-        else icon.setImageBitmap(i == 0 ? TiggoIcons.carTile(m(78)) : TiggoIcons.plusTile(m(78)));
-        slot.addView(icon, lp(m(78), m(78)));
-        TextView label = text(chosen != null && chosen.label != null ? chosen.label : DOCK_LABELS[i], 19, false);
+        else icon.setImageBitmap(i == 0 ? TiggoIcons.carTile(m(58)) : TiggoIcons.plusTile(m(58)));
+        slot.addView(icon, lp(m(60), m(60)));
+        String labelText = chosen != null && chosen.label != null ? chosen.label
+                : (i >= DOCK_COUNT && shown != null && shown.label != null ? shown.label : dockLabel(i));
+        TextView label = text(labelText, 17, false);
         label.setGravity(Gravity.CENTER);
         label.setSingleLine(true);
         label.setEllipsize(android.text.TextUtils.TruncateAt.END);
         LinearLayout.LayoutParams labelLp = lp(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT);
-        labelLp.topMargin = m(6);
+        labelLp.topMargin = m(4);
         slot.addView(label, labelLp);
         slot.setOnClickListener(v -> launchDockSlot(i));
         slot.setOnLongClickListener(v -> {
@@ -992,8 +1088,7 @@ final class TiggoHome extends FrameLayout {
     }
 
     private void launchDockSlot(int slot) {
-        MainActivity.AppEntry e = chosenDockApp(slot);
-        if (e == null) e = defaultDockApp(slot);
+        MainActivity.AppEntry e = dockShown(slot);
         if (e != null) {
             host.launchAnimated(this, e);
             return;
@@ -1002,12 +1097,12 @@ final class TiggoHome extends FrameLayout {
             host.showControlCenter();
             return;
         }
-        host.toast(DOCK_LABELS[slot] + ": приложение не найдено, выберите его");
+        host.toast(dockLabel(slot) + ": приложение не найдено, выберите его");
         chooseDockApp(slot);
     }
 
     private void chooseDockApp(final int slot) {
-        openAppGrid("Приложение для «" + DOCK_LABELS[slot] + "»", e -> {
+        openAppGrid("Приложение для «" + dockLabel(slot) + "»", e -> {
             host.prefs.edit().putString(PREF_DOCK + slot, e.key).apply();
             rebuildDockSlots();
             closeAllApps();
@@ -1019,7 +1114,7 @@ final class TiggoHome extends FrameLayout {
     }
 
     private void openDockSlotSheet(final int slot) {
-        LinearLayout panel = beginSheet(DOCK_LABELS[slot], false, 760);
+        LinearLayout panel = beginSheet(dockLabel(slot), false, 760);
         panel.addView(sheetRow("Заменить приложение", null, v -> chooseDockApp(slot)));
         if (chosenDockApp(slot) != null) {
             panel.addView(sheetRow("Сбросить на значение по умолчанию", null, v -> {
@@ -1232,6 +1327,7 @@ final class TiggoHome extends FrameLayout {
     }
 
     void closeAllApps() {
+        closePromo();
         closeSheet();
         allAppsLayer.setVisibility(GONE);
         allAppsLayer.removeAllViews();
@@ -1239,7 +1335,75 @@ final class TiggoHome extends FrameLayout {
     }
 
     boolean isAllAppsOpen() {
-        return allAppsOpen || sheetOpen;
+        return allAppsOpen || sheetOpen || promoOpen;
+    }
+
+    // ------------------------------------------------------------------ promo video (long press on the logo)
+
+    private void openPromo() {
+        if (promoOpen) return;
+        new Thread(() -> {
+            final File f = new File(host.getCacheDir(), "tiggo9_promo.mp4");
+            try {
+                if (!f.exists() || f.length() < 1000) {
+                    try (InputStream in = host.getAssets().open("backgrounds/tiggo9_promo.mp4");
+                         FileOutputStream out = new FileOutputStream(f)) {
+                        byte[] buf = new byte[65536];
+                        int n;
+                        while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                    }
+                }
+            } catch (Throwable t) {
+                f.delete();
+                host.runOnUiThread(() -> host.toast("Видео не найдено"));
+                return;
+            }
+            host.runOnUiThread(() -> showPromo(f));
+        }).start();
+    }
+
+    private void showPromo(File f) {
+        if (promoOpen) return;
+        closeAllApps();
+        promoLayer = new FrameLayout(host);
+        promoLayer.setBackgroundColor(Color.BLACK);
+        promoLayer.setClickable(true);
+        promoVideo = new VideoView(host);
+        promoLayer.addView(promoVideo, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.CENTER));
+        TextView close = text("✕", 32, true);
+        close.setGravity(Gravity.CENTER);
+        close.setBackground(pressable(m(32), 0x66000000));
+        close.setOnClickListener(v -> closePromo());
+        FrameLayout.LayoutParams cl = new FrameLayout.LayoutParams(m(64), m(64), Gravity.TOP | Gravity.END);
+        cl.topMargin = m(24);
+        cl.rightMargin = m(24);
+        promoLayer.addView(close, cl);
+        promoLayer.setOnClickListener(v -> closePromo());
+        promoVideo.setOnCompletionListener(mp -> closePromo());
+        promoVideo.setOnErrorListener((mp, what, extra) -> {
+            host.toast("Не удалось воспроизвести видео");
+            closePromo();
+            return true;
+        });
+        promoVideo.setOnPreparedListener(mp -> promoVideo.start());
+        promoVideo.setVideoPath(f.getAbsolutePath());
+        addView(promoLayer, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        promoOpen = true;
+    }
+
+    private void closePromo() {
+        if (!promoOpen) return;
+        promoOpen = false;
+        try {
+            if (promoVideo != null) promoVideo.stopPlayback();
+        } catch (Throwable ignored) {
+            // already stopped
+        }
+        if (promoLayer != null) removeView(promoLayer);
+        promoLayer = null;
+        promoVideo = null;
     }
 
     // ------------------------------------------------------------------ settings sheets
@@ -1363,7 +1527,7 @@ final class TiggoHome extends FrameLayout {
             final int slot = i;
             MainActivity.AppEntry chosen = chosenDockApp(slot);
             String sub = chosen != null ? chosen.label : "Выбирается автоматически";
-            panel.addView(sheetRow(DOCK_LABELS[slot], sub, v -> chooseDockApp(slot)));
+            panel.addView(sheetRow(dockLabel(slot), sub, v -> chooseDockApp(slot)));
         }
         addDoneButton(panel);
     }
@@ -1802,6 +1966,7 @@ final class TiggoHome extends FrameLayout {
 
     @Override protected void onWindowVisibilityChanged(int visibility) {
         super.onWindowVisibilityChanged(visibility);
+        if (visibility != VISIBLE) closePromo();
         if (visibility == VISIBLE && (wallBmp == null || wallBmp.isRecycled()) && wallView != null) {
             loadWallpaper();
         }

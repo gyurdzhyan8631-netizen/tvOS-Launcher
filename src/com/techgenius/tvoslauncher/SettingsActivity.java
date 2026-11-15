@@ -75,14 +75,8 @@ public class SettingsActivity extends Activity {
         {LOOK_SCENES, "scene"},
         {WEATHER, "cloud"},
         {APPS, "apps"},
-        {PROFILES, "person"},
         {CONTROL_PANEL, "sliders"},
-        {BUTTON_MAPPER, "remote"},
-        {QUICK, "bolt"},
-        {LANGUAGE, "globe"},
-        {ADVANCED, "shield"},
-        {UPDATES, "update"},
-        {ABOUT, "info"}
+        {LANGUAGE, "globe"}
     };
 
     private TextView sideTitleView;
@@ -291,8 +285,9 @@ public class SettingsActivity extends Activity {
         sideTitleView.setTextColor(Color.WHITE);
         sideTitleView.setTypeface(Ui.font(this, "display"));
         sideTitleView.setLetterSpacing(-0.022f);
-        Ui.textSize(sideTitleView, 24f);
+        Ui.textSize(sideTitleView, 19f);
         sideTitleView.setSingleLine(true);
+        sideTitleView.setEllipsize(android.text.TextUtils.TruncateAt.END);
         LinearLayout.LayoutParams stLp = new LinearLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         stLp.leftMargin = u(16);
@@ -310,45 +305,37 @@ public class SettingsActivity extends Activity {
 
         buildSidebarRows();
 
-        // On-screen Back (a car screen has no remote): closes sub-menus first, then Settings
-        TextView backBtn = new TextView(this);
-        backBtn.setText(I18n.s(this, "Back", "Geri"));
-        backBtn.setTextColor(Color.WHITE);
-        backBtn.setTypeface(Ui.font(this, "semibold"));
-        Ui.textSize(backBtn, 15f);
-        backBtn.setGravity(Gravity.CENTER);
-        GradientDrawable backBg = new GradientDrawable();
-        backBg.setCornerRadius(u(12));
-        backBg.setColor(0x33FFFFFF);
-        backBtn.setBackground(backBg);
-        backBtn.setClickable(true);
-        backBtn.setOnClickListener(v -> onBackPressed());
-        LinearLayout.LayoutParams backLp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, u(40));
-        backLp.leftMargin = u(8);
-        backLp.rightMargin = u(8);
-        backLp.topMargin = u(10);
-        sideCol.addView(backBtn, backLp);
-
-        // Straight back to the home screen from any depth
+        // On-screen Home / Back right under the title (a car screen has no remote)
+        LinearLayout navRow = new LinearLayout(this);
+        navRow.setOrientation(LinearLayout.HORIZONTAL);
         TextView homeBtn = new TextView(this);
         homeBtn.setText("Домой");
-        homeBtn.setTextColor(Color.WHITE);
-        homeBtn.setTypeface(Ui.font(this, "semibold"));
-        Ui.textSize(homeBtn, 15f);
-        homeBtn.setGravity(Gravity.CENTER);
-        GradientDrawable homeBg = new GradientDrawable();
-        homeBg.setCornerRadius(u(12));
-        homeBg.setColor(0x55278BFF);
-        homeBtn.setBackground(homeBg);
-        homeBtn.setClickable(true);
+        TextView backBtn = new TextView(this);
+        backBtn.setText("Назад");
+        TextView[] navBtns = {homeBtn, backBtn};
+        for (int bi = 0; bi < 2; bi++) {
+            TextView btn = navBtns[bi];
+            btn.setTextColor(Color.WHITE);
+            btn.setTypeface(Ui.font(this, "semibold"));
+            Ui.textSize(btn, 15f);
+            btn.setGravity(Gravity.CENTER);
+            GradientDrawable bg = new GradientDrawable();
+            bg.setCornerRadius(u(12));
+            bg.setColor(bi == 0 ? 0x66278BFF : 0x33FFFFFF);
+            btn.setBackground(bg);
+            btn.setClickable(true);
+            LinearLayout.LayoutParams bl = new LinearLayout.LayoutParams(0, u(40), 1f);
+            if (bi == 0) bl.rightMargin = u(6);
+            navRow.addView(btn, bl);
+        }
         homeBtn.setOnClickListener(v -> finish());
-        LinearLayout.LayoutParams homeLp = new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, u(40));
-        homeLp.leftMargin = u(8);
-        homeLp.rightMargin = u(8);
-        homeLp.topMargin = u(8);
-        sideCol.addView(homeBtn, homeLp);
+        backBtn.setOnClickListener(v -> onBackPressed());
+        LinearLayout.LayoutParams navLp = new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        navLp.leftMargin = u(8);
+        navLp.rightMargin = u(8);
+        navLp.bottomMargin = u(10);
+        sideCol.addView(navRow, 1, navLp);
 
         // ---------------- Right Main Column (.set-main) ----------------
         LinearLayout mainCol = new LinearLayout(this);

@@ -92,6 +92,7 @@ final class IconPacks {
         }
         Map<String, String> comps = new HashMap<>();
         Map<String, String> pkgs = new HashMap<>();
+        Set<String> ambiguous = new HashSet<>();
         Resources res = null;
         if (!pack.isEmpty()) {
             try {
@@ -116,7 +117,9 @@ final class IconPacks {
                     if (!comps.containsKey(body)) comps.put(body, dr);
                     int slash = body.indexOf('/');
                     String pkg = slash > 0 ? body.substring(0, slash) : body;
-                    if (!pkgs.containsKey(pkg)) pkgs.put(pkg, dr);
+                    String known = pkgs.get(pkg);
+                    if (known == null) pkgs.put(pkg, dr);
+                    else if (!known.equals(dr)) ambiguous.add(pkg);
                 }
                 if (in != null) in.close();
             } catch (Throwable t) {
@@ -125,6 +128,7 @@ final class IconPacks {
                 pkgs.clear();
             }
         }
+        for (String pkg : ambiguous) pkgs.remove(pkg);  // several different icons: only an exact component may match
         synchronized (IconPacks.class) {
             loadedPack = pack;
             packRes = res;
@@ -143,6 +147,10 @@ final class IconPacks {
         }
         String name = comp != null ? byComponent.get(comp) : null;
         if (name == null && e.pkg != null) name = byPackage.get(e.pkg);
+        if (name == null && e.label != null) {
+            String guess = e.label.toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9]+", "_").replaceAll("^_+|_+$", "");
+            if (!guess.isEmpty() && packRes.getIdentifier(guess, "drawable", loadedPack) != 0) name = guess;
+        }
         if (name == null) return null;
         Bitmap b = cache.get(name);
         if (b == null) {
