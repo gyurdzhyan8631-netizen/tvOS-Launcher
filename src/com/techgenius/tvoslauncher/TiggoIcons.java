@@ -410,4 +410,135 @@ final class TiggoIcons {
         c.drawLine(s * 0.64f, s * 0.64f, s * 0.86f, s * 0.86f, st);
         return b;
     }
+
+    /** Sun with rays (brightness). */
+    static Bitmap sun(int s, int color) {
+        Bitmap b = bmp(s);
+        Canvas c = new Canvas(b);
+        Paint st = stroke(color, s * 0.07f);
+        c.drawCircle(s * 0.5f, s * 0.5f, s * 0.19f, st);
+        for (int i = 0; i < 8; i++) {
+            double a = Math.PI * i / 4.0;
+            float x0 = s * 0.5f + (float) Math.cos(a) * s * 0.30f;
+            float y0 = s * 0.5f + (float) Math.sin(a) * s * 0.30f;
+            float x1 = s * 0.5f + (float) Math.cos(a) * s * 0.42f;
+            float y1 = s * 0.5f + (float) Math.sin(a) * s * 0.42f;
+            c.drawLine(x0, y0, x1, y1, st);
+        }
+        return b;
+    }
+
+    /** Speaker with coloured waves. */
+    static Bitmap volumeColored(int s, int body, int waves) {
+        Bitmap b = bmp(s);
+        Canvas c = new Canvas(b);
+        Paint p = fill(body);
+        Path sp = new Path();
+        sp.moveTo(s * 0.10f, s * 0.40f);
+        sp.lineTo(s * 0.28f, s * 0.40f);
+        sp.lineTo(s * 0.48f, s * 0.20f);
+        sp.lineTo(s * 0.48f, s * 0.80f);
+        sp.lineTo(s * 0.28f, s * 0.60f);
+        sp.lineTo(s * 0.10f, s * 0.60f);
+        sp.close();
+        c.drawPath(sp, p);
+        Paint st = stroke(waves, s * 0.08f);
+        c.drawArc(new RectF(s * 0.38f, s * 0.34f, s * 0.68f, s * 0.66f), -50, 100, false, st);
+        c.drawArc(new RectF(s * 0.38f, s * 0.20f, s * 0.90f, s * 0.80f), -50, 100, false, st);
+        return b;
+    }
+
+    /** Painter's palette. */
+    static Bitmap palette(int s, int color) {
+        Bitmap b = bmp(s);
+        Canvas c = new Canvas(b);
+        c.drawOval(new RectF(s * 0.06f, s * 0.10f, s * 0.94f, s * 0.90f), fill(color));
+        Paint cut = clear();
+        c.drawCircle(s * 0.32f, s * 0.40f, s * 0.07f, cut);
+        c.drawCircle(s * 0.50f, s * 0.28f, s * 0.07f, cut);
+        c.drawCircle(s * 0.70f, s * 0.36f, s * 0.07f, cut);
+        c.drawCircle(s * 0.30f, s * 0.60f, s * 0.07f, cut);
+        c.drawCircle(s * 0.66f, s * 0.74f, s * 0.12f, cut);
+        return b;
+    }
+
+    /** Circle with an "i". */
+    static Bitmap infoCircle(int s, int color) {
+        Bitmap b = bmp(s);
+        Canvas c = new Canvas(b);
+        c.drawCircle(s * 0.5f, s * 0.5f, s * 0.44f, fill(color));
+        Paint cut = clear();
+        c.drawCircle(s * 0.5f, s * 0.30f, s * 0.06f, cut);
+        c.drawRoundRect(new RectF(s * 0.45f, s * 0.42f, s * 0.55f, s * 0.74f), s * 0.03f, s * 0.03f, cut);
+        return b;
+    }
+
+    static Bitmap star(int s, int color) {
+        Bitmap b = bmp(s);
+        Canvas c = new Canvas(b);
+        Path p = new Path();
+        for (int i = 0; i < 10; i++) {
+            double a = -Math.PI / 2 + i * Math.PI / 5;
+            float r = (i % 2 == 0) ? s * 0.44f : s * 0.19f;
+            float x = s * 0.5f + (float) Math.cos(a) * r;
+            float y = s * 0.54f + (float) Math.sin(a) * r;
+            if (i == 0) p.moveTo(x, y); else p.lineTo(x, y);
+        }
+        p.close();
+        Paint f = fill(color);
+        f.setStyle(Paint.Style.FILL_AND_STROKE);
+        f.setStrokeJoin(Paint.Join.ROUND);
+        f.setStrokeWidth(s * 0.05f);
+        c.drawPath(p, f);
+        return b;
+    }
+
+    /** 2x2 rounded squares. */
+    static Bitmap apps4(int s, int color) {
+        Bitmap b = bmp(s);
+        Canvas c = new Canvas(b);
+        Paint p = fill(color);
+        float a = s * 0.14f;
+        float m = s * 0.54f;
+        float w = s * 0.32f;
+        c.drawRoundRect(new RectF(a, a, a + w, a + w), s * 0.08f, s * 0.08f, p);
+        c.drawRoundRect(new RectF(m, a, m + w, a + w), s * 0.08f, s * 0.08f, p);
+        c.drawRoundRect(new RectF(a, m, a + w, m + w), s * 0.08f, s * 0.08f, p);
+        c.drawRoundRect(new RectF(m, m, m + w, m + w), s * 0.08f, s * 0.08f, p);
+        return b;
+    }
+
+    /** Chevron pointing left (back). */
+    static Bitmap back(int s, int color) {
+        Bitmap b = bmp(s);
+        Canvas c = new Canvas(b);
+        Path p = new Path();
+        p.moveTo(s * 0.65f, s * 0.2f);
+        p.lineTo(s * 0.35f, s * 0.5f);
+        p.lineTo(s * 0.65f, s * 0.8f);
+        c.drawPath(p, stroke(color, s * 0.09f));
+        return b;
+    }
+
+    /** Round clock face. */
+    static Bitmap clockFace(int s, int color) {
+        Bitmap b = bmp(s);
+        Canvas c = new Canvas(b);
+        Paint st = stroke(color, s * 0.07f);
+        c.drawCircle(s * 0.5f, s * 0.5f, s * 0.38f, st);
+        c.drawLine(s * 0.5f, s * 0.5f, s * 0.5f, s * 0.28f, st);
+        c.drawLine(s * 0.5f, s * 0.5f, s * 0.66f, s * 0.58f, st);
+        return b;
+    }
+
+    /** 3x3 grid of rounded squares (widgets). */
+    static Bitmap widgets(int s, int color) {
+        Bitmap b = bmp(s);
+        Canvas c = new Canvas(b);
+        Paint p = fill(color);
+        c.drawRoundRect(new RectF(s * 0.12f, s * 0.14f, s * 0.88f, s * 0.54f), s * 0.1f, s * 0.1f, p);
+        c.drawRoundRect(new RectF(s * 0.12f, s * 0.60f, s * 0.46f, s * 0.86f), s * 0.08f, s * 0.08f, p);
+        c.drawRoundRect(new RectF(s * 0.54f, s * 0.60f, s * 0.88f, s * 0.86f), s * 0.08f, s * 0.08f, p);
+        return b;
+    }
 }
