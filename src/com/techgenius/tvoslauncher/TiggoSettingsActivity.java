@@ -753,13 +753,19 @@ public class TiggoSettingsActivity extends Activity {
                     rerun();
                 }, true));
         list.addView(rowDivider());
+        list.addView(settingRow(TiggoIcons.apps4(m(52), Color.WHITE), "Размер иконок", Scenes.iconScaleLabel(this),
+                v -> openSub(this::pageIconSize), true));
+        list.addView(rowDivider());
+        list.addView(settingRow(TiggoIcons.apps4(m(52), Color.WHITE), "Размер дока", Scenes.dockScaleLabel(this),
+                v -> openSub(this::pageDockSize), true));
+        list.addView(rowDivider());
         list.addView(settingRow(TiggoIcons.apps4(m(52), Color.WHITE), "Пак иконок", iconPackName(),
                 v -> openSub(this::pageIconPack), true));
         list.addView(rowDivider());
         list.addView(settingRow(TiggoIcons.clockFace(m(52), Color.WHITE), "Стиль часов",
-                TiggoTheme.CLOCK_NAMES[TiggoTheme.get(this, TiggoTheme.K_CLOCK, 0, 3)],
+                TiggoTheme.CLOCK_NAMES[TiggoTheme.get(this, TiggoTheme.K_CLOCK, 1, 3)],
                 v -> openSub(() -> pageChoice("Стиль часов", TiggoTheme.CLOCK_NAMES,
-                        TiggoTheme.get(this, TiggoTheme.K_CLOCK, 0, 3), i -> {
+                        TiggoTheme.get(this, TiggoTheme.K_CLOCK, 1, 3), i -> {
                             TiggoTheme.put(this, TiggoTheme.K_CLOCK, i);
                             return false;
                         })), true));
@@ -879,6 +885,32 @@ public class TiggoSettingsActivity extends Activity {
         }
         addCard(col, c, 0);
         showPage(title, col);
+    }
+
+    private void pagePercent(String title, final int[] steps, int current, final boolean dock) {
+        String[] labels = new String[steps.length];
+        int cur = 0;
+        for (int i = 0; i < steps.length; i++) {
+            int diff = steps[i] - 100;
+            labels[i] = diff == 0 ? "100% (По умолчанию)" : (diff > 0 ? steps[i] + "% (+" + diff + "%)"
+                    : steps[i] + "% (" + diff + "%)");
+            if (steps[i] == current) cur = i;
+        }
+        pageChoice(title, labels, cur, i -> {
+            if (dock) Scenes.setDockScalePercent(this, steps[i]);
+            else Scenes.setIconScalePercent(this, steps[i]);
+            return false;
+        });
+    }
+
+    private void pageIconSize() {
+        pagePercent("Размер иконок", new int[]{60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160},
+                Scenes.getIconScalePercent(this), false);
+    }
+
+    private void pageDockSize() {
+        pagePercent("Размер дока", new int[]{50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150},
+                Scenes.getDockScalePercent(this), true);
     }
 
     private void pageIconPack() {

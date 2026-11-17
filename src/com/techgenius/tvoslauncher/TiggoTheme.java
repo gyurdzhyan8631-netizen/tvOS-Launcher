@@ -95,9 +95,10 @@ final class TiggoTheme {
     static String signature(Context c) {
         SharedPreferences p = prefs(c);
         return theme(c) + "|" + get(c, K_ACCENT, 0, 4) + "|" + get(c, K_MENU, 0, 3) + "|"
-                + get(c, K_CLOCK, 0, 3) + "|" + get(c, K_WEATHER, 0, 2) + "|"
+                + get(c, K_CLOCK, 1, 3) + "|" + get(c, K_WEATHER, 0, 2) + "|"
                 + p.getBoolean(K_WIDGET_OFF + "weather", false) + p.getBoolean(K_WIDGET_OFF + "nav", false)
                 + p.getBoolean(K_WIDGET_OFF + "music", false) + "|"
-                + p.getBoolean(K_TILE_GLASS, true) + "|" + p.getString(K_ICON_PACK, "auto");
+                + p.getBoolean(K_TILE_GLASS, true) + "|" + p.getString(K_ICON_PACK, "auto") + "|"
+                + Scenes.getDockScalePercent(c) + "|" + Scenes.getIconScalePercent(c);
     }
 }

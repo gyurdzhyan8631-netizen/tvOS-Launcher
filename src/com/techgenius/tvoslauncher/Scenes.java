@@ -359,6 +359,24 @@ public final class Scenes {
         prefs(c).edit().putInt("dock_scale_pct", clamped).apply();
     }
 
+    public static int getIconScalePercent(Context c) {
+        if (c == null) return 100;
+        int pct = prefs(c).getInt("tiggo9_icon_pct", 100);
+        return Math.max(60, Math.min(160, pct));
+    }
+
+    public static void setIconScalePercent(Context c, int pct) {
+        if (c == null) return;
+        prefs(c).edit().putInt("tiggo9_icon_pct", Math.max(60, Math.min(160, pct))).apply();
+    }
+
+    public static String iconScaleLabel(Context c) {
+        int pct = getIconScalePercent(c);
+        int diff = pct - 100;
+        if (diff == 0) return "100% (По умолчанию)";
+        return diff > 0 ? pct + "% (+" + diff + "%)" : pct + "% (" + diff + "%)";
+    }
+
     public static float getDockScaleFactor(Context c) {
         return getDockScalePercent(c) / 100f;
     }

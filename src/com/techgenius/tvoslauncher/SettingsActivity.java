@@ -1015,6 +1015,9 @@ public class SettingsActivity extends Activity {
             row(tr("Dock size", "Dock boyutu"),
                     () -> Scenes.dockScaleLabel(this),
                     () -> openSubMenu("dock_size"));
+            row(tr("Icon size", "Simge boyutu"),
+                    () -> Scenes.iconScaleLabel(this),
+                    () -> openSubMenu("icon_size"));
             row(tr("Show app names", "Uygulama adlarını göster"),
                     () -> Scenes.isDockNamesShown(this) ? tr("On", "Açık") : tr("Off", "Kapalı"),
                     () -> {
@@ -2316,6 +2319,8 @@ public class SettingsActivity extends Activity {
         if (subId == null) return;
         if ("dock_size".equals(subId)) {
             subMenuDockSize();
+        } else if ("icon_size".equals(subId)) {
+            subMenuIconSize();
         } else if ("home_dashboard".equals(subId)) {
             subMenuHomeDashboard();
         } else if ("releases_countries".equals(subId)) {
@@ -2408,6 +2413,28 @@ public class SettingsActivity extends Activity {
                 Scenes.setDockScalePercent(this, pct);
                 rebuildMainRows();
                 showStatusMsg(tr("Dock size set to " + pct + "%.", "Dock boyutu %" + pct + " olarak ayarlandı."));
+            });
+        }
+    }
+
+    private void subMenuIconSize() {
+        mainHeadView.setText(tr("Icon size", "Simge boyutu"));
+        backSubMenuRow();
+        section(tr("ICON SIZE (-40% TO +60%)", "SİMGE BOYUTU (-%40 İLE +%60 ARASI)"));
+        int curPct = Scenes.getIconScalePercent(this);
+        int[] steps = {60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160};
+        for (int i = 0; i < steps.length; i++) {
+            final int pct = steps[i];
+            int diff = pct - 100;
+            String label = diff == 0 ? "100% (" + tr("Default", "Varsayılan") + ")"
+                    : (diff > 0 ? pct + "% (+" + diff + "%)" : pct + "% (" + diff + "%)");
+            String sub = diff > 0 ? "Крупнее иконки: в колонке помещается меньше приложений"
+                    : (diff < 0 ? "Мельче иконки: в колонке помещается больше приложений"
+                                : "Обычный размер иконок на рабочем столе");
+            choiceRow(label, sub, curPct == pct, () -> {
+                Scenes.setIconScalePercent(this, pct);
+                rebuildMainRows();
+                showStatusMsg("Размер иконок: " + pct + "%");
             });
         }
     }

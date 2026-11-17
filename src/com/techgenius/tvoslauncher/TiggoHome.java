@@ -266,12 +266,25 @@ final class TiggoHome extends FrameLayout {
         layer.addView(buildLogo(), pos(m(330), m(60), m(60), oy + m(34)));
         layer.addView(buildTopRight(), posEnd(ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT, m(39), oy + m(24)));
+        layer.addView(buildClockBlock(), pos(ViewGroup.LayoutParams.WRAP_CONTENT,
+                ViewGroup.LayoutParams.WRAP_CONTENT, m(60), oy + m(100)));
 
+        float ds = dockScale();
+        float is = iconScale();
+        int dockW = Math.min(Math.round(w * 0.67f), m(1500));
+        int dockH = m(132 * ds);
+        int dockTop = Math.max(m(560), h - dockH - m(60));
+
+        // the column of app icons fills the space between the clock and the dock
+        int tilesTop = oy + m(262);
+        int tileH = Math.max(1, m(76 * is + 42));
+        int avail = Math.max(tileH, dockTop - m(20) - tilesTop);
+        slotCount = Math.max(2, Math.min(6, (avail + m(6)) / tileH));
         appStrip = new LinearLayout(host);
         appStrip.setOrientation(LinearLayout.VERTICAL);
         appStrip.setClipChildren(false);
         appStrip.setClipToPadding(false);
-        layer.addView(appStrip, pos(m(168), m(590), m(46), oy + m(143)));
+        layer.addView(appStrip, pos(m(168), slotCount * tileH, m(46), tilesTop));
 
         widgetCol = new LinearLayout(host);
         widgetCol.setOrientation(LinearLayout.VERTICAL);
@@ -279,11 +292,9 @@ final class TiggoHome extends FrameLayout {
         widgetCol.setClipToPadding(false);
         layer.addView(widgetCol, posEnd(m(366), m(560), m(38), oy + m(170)));
 
-        int dockW = Math.min(Math.round(w * 0.67f), m(1500));
-        int dockH = m(132);
         FrameLayout.LayoutParams dockLp = new FrameLayout.LayoutParams(dockW, dockH, Gravity.TOP | Gravity.START);
         dockLp.leftMargin = (w - dockW) / 2;
-        dockLp.topMargin = Math.max(m(680), h - dockH - m(60));
+        dockLp.topMargin = dockTop;
         layer.addView(buildDock(), dockLp);
 
         statusKnown = false;
@@ -504,36 +515,94 @@ final class TiggoHome extends FrameLayout {
                 lp(m(66), m(64)));
         box.addView(capsule);
 
-        int style = TiggoTheme.get(host, TiggoTheme.K_CLOCK, 0, 3);
-        float timeSize = style == 2 ? 74f : (style == 3 ? 46f : 60f);
-        float dateSize = style == 2 ? 24f : (style == 3 ? 18f : 22f);
-        LinearLayout clock = new LinearLayout(host);
-        clock.setOrientation(LinearLayout.VERTICAL);
-        clock.setGravity(Gravity.END);
-        TextClock time = new TextClock(host);
+        return box;
+    }
+
+    private float dockScale() {
+        return Scenes.getDockScaleFactor(host);
+    }
+
+    private float iconScale() {
+        return Scenes.getIconScalePercent(host) / 100f;
+    }
+
+    /** Text drawn as glass: a light gradient, a bright rim and a soft shadow. */
+    private static void drawGlass(android.graphics.Canvas c, TextView tv) {
+        CharSequence t = tv.getText();
+        if (t == null || t.length() == 0) return;
+        android.text.TextPaint src = tv.getPaint();
+        float size = src.getTextSize();
+        float x = tv.getPaddingLeft();
+        float y = tv.getBaseline();
+        android.graphics.Paint fillPaint = new android.graphics.Paint(src);
+        fillPaint.setStyle(android.graphics.Paint.Style.FILL);
+        fillPaint.setShadowLayer(size * 0.10f, 0, size * 0.04f, 0x66000000);
+        fillPaint.setShader(new LinearGradient(0, y - size * 0.8f, 0, y,
+                new int[]{0xF2FFFFFF, 0xA0DCE8FF}, null, Shader.TileMode.CLAMP));
+        c.drawText(t, 0, t.length(), x, y, fillPaint);
+        android.graphics.Paint rim = new android.graphics.Paint(src);
+        rim.setShader(null);
+        rim.setShadowLayer(0, 0, 0, 0);
+        rim.setStyle(android.graphics.Paint.Style.STROKE);
+        rim.setStrokeWidth(Math.max(1f, size * 0.014f));
+        rim.setColor(0xB0FFFFFF);
+        c.drawText(t, 0, t.length(), x, y, rim);
+    }
+
+    private static final class GlassClock extends TextClock {
+        GlassClock(Context c) {
+            super(c);
+        }
+
+        @Override protected void onDraw(android.graphics.Canvas canvas) {
+            drawGlass(canvas, this);
+        }
+    }
+
+    private static final class GlassText extends TextView {
+        GlassText(Context c) {
+            super(c);
+        }
+
+        @Override protected void onDraw(android.graphics.Canvas canvas) {
+            drawGlass(canvas, this);
+        }
+    }
+
+    /** Large clock and date under the TIGGO 9 logo; the digits look like glass. */
+    private View buildClockBlock() {
+        int style = TiggoTheme.get(host, TiggoTheme.K_CLOCK, 1, 3);
+        boolean glassy = style == 1 || style == 2;
+        float timeSize = style == 2 ? 112f : (style == 3 ? 56f : (style == 0 ? 84f : 96f));
+        float dateSize = style == 2 ? 32f : (style == 3 ? 20f : 28f);
+        LinearLayout box = new LinearLayout(host);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setGravity(Gravity.START);
+
+        TextClock time = glassy ? new GlassClock(host) : new TextClock(host);
         time.setFormat24Hour("HH:mm");
         time.setFormat12Hour("HH:mm");
         time.setTextColor(Color.WHITE);
         time.setTextSize(TypedValue.COMPLEX_UNIT_PX, timeSize * k);
         time.setTypeface(Ui.font(host, "regular"));
         time.setIncludeFontPadding(false);
-        time.setGravity(Gravity.END);
-        time.setShadowLayer(m(6), 0, m(2), 0x66000000);
-        if (style == 1) glassText(time, timeSize);
+        if (!glassy) time.setShadowLayer(m(6), 0, m(2), 0x66000000);
         android.graphics.Paint probe = new android.graphics.Paint();
         probe.setTypeface(Ui.font(host, "regular"));
         probe.setTextSize(timeSize * k);
-        time.setMinWidth(Math.round(probe.measureText("00:00")) + m(10));  // never cut the minutes
-        clock.addView(time, lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        dateView = text("", dateSize, false);
-        dateView.setGravity(Gravity.END);
+        time.setMinWidth(Math.round(probe.measureText("00:00")) + m(12));  // never cut the minutes
+        box.addView(time, lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+
+        dateView = glassy ? new GlassText(host) : new TextView(host);
         dateView.setTextColor(Color.WHITE);
-        if (style == 1) glassText(dateView, dateSize);
-        clock.addView(dateView, lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        LinearLayout.LayoutParams clockLp = lp(ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
-        clockLp.leftMargin = m(26);
-        box.addView(clock, clockLp);
+        dateView.setTextSize(TypedValue.COMPLEX_UNIT_PX, dateSize * k);
+        dateView.setTypeface(Ui.font(host, "regular"));
+        dateView.setIncludeFontPadding(false);
+        dateView.setSingleLine(true);
+        if (!glassy) dateView.setShadowLayer(m(4), 0, m(1), 0x66000000);
+        LinearLayout.LayoutParams dl = lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        dl.topMargin = m(6);
+        box.addView(dateView, dl);
         return box;
     }
 
@@ -975,9 +1044,10 @@ final class TiggoHome extends FrameLayout {
         icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
         Drawable packIcon = iconOf(entry);
         if (packIcon != null) icon.setImageDrawable(packIcon);
-        tile.addView(icon, lp(m(88), m(88)));
+        float is = iconScale();
+        tile.addView(icon, lp(m(76 * is), m(76 * is)));
 
-        TextView label = text(entry.label == null ? "" : entry.label, 20, false);
+        TextView label = text(entry.label == null ? "" : entry.label, Math.max(15f, 19f * Math.min(1.15f, is)), false);
         label.setGravity(Gravity.CENTER);
         label.setSingleLine(true);
         label.setEllipsize(android.text.TextUtils.TruncateAt.END);
@@ -1007,7 +1077,7 @@ final class TiggoHome extends FrameLayout {
     private final Runnable snapRunnable = new Runnable() {
         @Override public void run() {
             if (dockScroll == null || dockSlots == null) return;
-            int slotW = Math.max(1, m(136));
+            int slotW = Math.max(1, m(136 * dockScale()));
             int visible = Math.max(1, dockScroll.getWidth() / slotW);
             int page = visible * slotW;
             int x = dockScroll.getScrollX();
@@ -1019,11 +1089,12 @@ final class TiggoHome extends FrameLayout {
     };
 
     private View buildDock() {
+        float ds = dockScale();
         LinearLayout dock = new LinearLayout(host);
         dock.setOrientation(LinearLayout.HORIZONTAL);
         dock.setGravity(Gravity.CENTER_VERTICAL);
-        dock.setPadding(m(30), m(8), m(34), m(8));
-        dock.setBackground(glass(m(30), 0x78606468));
+        dock.setPadding(m(30 * ds), m(8 * ds), m(34 * ds), m(8 * ds));
+        dock.setBackground(glass(m(30 * ds), 0x78606468));
         dockView = dock;
         dockTip = null;
 
@@ -1048,9 +1119,9 @@ final class TiggoHome extends FrameLayout {
         FrameLayout menu = new FrameLayout(host);
         GradientDrawable menuBg = new GradientDrawable();
         menuBg.setColor(0x66808488);
-        menuBg.setCornerRadius(m(24));
-        menu.setBackground(new RippleDrawable(ColorStateList.valueOf(0x66FFFFFF), menuBg, rippleMask(m(24))));
-        menu.addView(iconView(Glyphs.get("apps", m(46), WHITE)), new FrameLayout.LayoutParams(
+        menuBg.setCornerRadius(m(24 * ds));
+        menu.setBackground(new RippleDrawable(ColorStateList.valueOf(0x66FFFFFF), menuBg, rippleMask(m(24 * ds))));
+        menu.addView(iconView(Glyphs.get("apps", m(46 * ds), WHITE)), new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         menu.setContentDescription("Все приложения");
         menu.setOnClickListener(v -> openAllApps());
@@ -1059,8 +1130,8 @@ final class TiggoHome extends FrameLayout {
             return true;
         });
         pressScale(menu);
-        LinearLayout.LayoutParams menuLp = lp(m(88), m(88));
-        menuLp.leftMargin = m(16);
+        LinearLayout.LayoutParams menuLp = lp(m(88 * ds), m(88 * ds));
+        menuLp.leftMargin = m(16 * ds);
         dock.addView(menu, menuLp);
         return dock;
     }
@@ -1142,7 +1213,7 @@ final class TiggoHome extends FrameLayout {
         int total = DOCK_COUNT + pool.size();
         for (int i = 0; i < total; i++) {
             if (i != 0 && dockShown(i) == null) continue;  // only real apps, no empty placeholders
-            dockSlots.addView(buildDockSlot(i), new LinearLayout.LayoutParams(m(136),
+            dockSlots.addView(buildDockSlot(i), new LinearLayout.LayoutParams(m(136 * dockScale()),
                     ViewGroup.LayoutParams.MATCH_PARENT));
         }
         if (dockScroll != null) dockScroll.scrollTo(0, 0);
@@ -1165,20 +1236,21 @@ final class TiggoHome extends FrameLayout {
         final String labelText = chosen != null && chosen.label != null ? chosen.label
                 : (shown != null && shown.label != null && i >= DOCK_COUNT ? shown.label : dockLabel(i));
 
+        final float ds = dockScale();
         final FrameLayout tile = new FrameLayout(host);
-        tile.setBackground(rippleOnly(m(26)));
+        tile.setBackground(rippleOnly(m(26 * ds)));
         ImageView icon = new ImageView(host);
         icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
         Drawable d = shown != null ? iconOf(shown) : null;
         if (d != null) icon.setImageDrawable(d);
-        else icon.setImageBitmap(TiggoIcons.carTile(m(86)));
-        tile.addView(icon, new FrameLayout.LayoutParams(m(86), m(86), Gravity.CENTER));
-        slot.addView(tile, lp(m(98), m(98)));
+        else icon.setImageBitmap(TiggoIcons.carTile(m(86 * ds)));
+        tile.addView(icon, new FrameLayout.LayoutParams(m(86 * ds), m(86 * ds), Gravity.CENTER));
+        slot.addView(tile, lp(m(98 * ds), m(98 * ds)));
 
         // while pressed: white ring around the icon and its name above (like the reference)
         final GradientDrawable ring = new GradientDrawable();
         ring.setColor(0x00000000);
-        ring.setCornerRadius(m(26));
+        ring.setCornerRadius(m(26 * ds));
         ring.setStroke(Math.max(2, m(3)), 0xFFFFFFFF);
         slot.setOnTouchListener((v, e) -> {
             switch (e.getActionMasked()) {
@@ -1188,7 +1260,7 @@ final class TiggoHome extends FrameLayout {
                     break;
                 case MotionEvent.ACTION_UP:
                 case MotionEvent.ACTION_CANCEL:
-                    tile.setBackground(rippleOnly(m(26)));
+                    tile.setBackground(rippleOnly(m(26 * ds)));
                     hideDockTip();
                     break;
                 default:

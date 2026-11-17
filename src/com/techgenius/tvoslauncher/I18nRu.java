@@ -8,6 +8,8 @@ final class I18nRu {
     }
 
     static void fill(Map<String, String> m) {
+        m.put("Icon size", "Размер иконок на рабочем столе");
+        m.put("ICON SIZE (-40% TO +60%)", "РАЗМЕР ИКОНОК (ОТ -40% ДО +60%)");
         m.put(" [Critical System Service — Protected]", " [Критическая системная служба — защищена]");
         m.put(" [Disabled — Tap to Enable]", " [Отключено — нажмите, чтобы включить]");
         m.put(" [Enabled — Tap to Disable]", " [Включено — нажмите, чтобы отключить]");
