@@ -159,6 +159,8 @@ final class TiggoHome extends FrameLayout {
     private LinearLayout widgetCol;
     private LinearLayout dockSlots;
     private HorizontalScrollView dockScroll;
+    private TextView dockTip;
+    private View dockView;
     private List<MainActivity.AppEntry> dockPool = new ArrayList<>();
     private FrameLayout promoLayer;
     private VideoView promoVideo;
@@ -277,11 +279,11 @@ final class TiggoHome extends FrameLayout {
         widgetCol.setClipToPadding(false);
         layer.addView(widgetCol, posEnd(m(366), m(560), m(38), oy + m(170)));
 
-        int dockW = Math.min(w - 2 * m(70), m(1460));
-        int dockH = m(124);
+        int dockW = Math.min(Math.round(w * 0.67f), m(1500));
+        int dockH = m(132);
         FrameLayout.LayoutParams dockLp = new FrameLayout.LayoutParams(dockW, dockH, Gravity.TOP | Gravity.START);
         dockLp.leftMargin = (w - dockW) / 2;
-        dockLp.topMargin = Math.max(m(700), h - dockH - m(30));
+        dockLp.topMargin = Math.max(m(680), h - dockH - m(60));
         layer.addView(buildDock(), dockLp);
 
         statusKnown = false;
@@ -1001,32 +1003,11 @@ final class TiggoHome extends FrameLayout {
         return slot >= 0 && slot < DOCK_COUNT ? DOCK_LABELS[slot] : "Слот " + (slot + 1);
     }
 
-    private View dockDivider() {
-        View d = new View(host);
-        d.setBackgroundColor(0x66FFFFFF);
-        LinearLayout.LayoutParams lp = lp(Math.max(1, m(2)), m(70));
-        lp.leftMargin = m(12);
-        lp.rightMargin = m(12);
-        d.setLayoutParams(lp);
-        return d;
-    }
-
-    private View dockAction(Bitmap bmp, String description, View.OnClickListener click) {
-        ImageView iv = iconView(bmp);
-        iv.setPadding(m(10), m(10), m(10), m(10));
-        iv.setBackground(rippleOnly(m(34)));
-        iv.setContentDescription(description);
-        iv.setOnClickListener(click);
-        pressScale(iv);
-        iv.setLayoutParams(lp(m(68), m(68)));
-        return iv;
-    }
-
     /** After a swipe the dock settles on a whole page of apps. */
     private final Runnable snapRunnable = new Runnable() {
         @Override public void run() {
             if (dockScroll == null || dockSlots == null) return;
-            int slotW = Math.max(1, m(134));
+            int slotW = Math.max(1, m(136));
             int visible = Math.max(1, dockScroll.getWidth() / slotW);
             int page = visible * slotW;
             int x = dockScroll.getScrollX();
@@ -1041,22 +1022,10 @@ final class TiggoHome extends FrameLayout {
         LinearLayout dock = new LinearLayout(host);
         dock.setOrientation(LinearLayout.HORIZONTAL);
         dock.setGravity(Gravity.CENTER_VERTICAL);
-        dock.setPadding(m(18), m(8), m(20), m(8));
-        dock.setBackground(glass(m(46), TiggoTheme.barFill(host)));
-
-        FrameLayout all = new FrameLayout(host);
-        GradientDrawable circle = new GradientDrawable();
-        circle.setShape(GradientDrawable.OVAL);
-        circle.setColor(0x33FFFFFF);
-        circle.setStroke(Math.max(1, m(2)), 0x55FFFFFF);
-        all.setBackground(new RippleDrawable(ColorStateList.valueOf(0x66FFFFFF), circle, rippleMask(m(46))));
-        all.addView(iconView(TiggoIcons.dots9(m(50), WHITE)), new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-        all.setContentDescription("Все приложения");
-        all.setOnClickListener(v -> openAllApps());
-        pressScale(all);
-        dock.addView(all, lp(m(92), m(92)));
-        dock.addView(dockDivider());
+        dock.setPadding(m(30), m(8), m(34), m(8));
+        dock.setBackground(glass(m(30), 0x78606468));
+        dockView = dock;
+        dockTip = null;
 
         dockScroll = new HorizontalScrollView(host);
         dockScroll.setHorizontalScrollBarEnabled(false);
@@ -1068,34 +1037,71 @@ final class TiggoHome extends FrameLayout {
         dockScroll.addView(dockSlots, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.MATCH_PARENT));
         dockScroll.setOnScrollChangeListener((v, x, y, ox, oy2) -> {
+            hideDockTip();
             dockScroll.removeCallbacks(snapRunnable);
             dockScroll.postDelayed(snapRunnable, 160);
         });
         dock.addView(dockScroll, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1f));
         rebuildDockSlots();
 
-        dock.addView(dockDivider());
-        dock.addView(dockAction(TiggoIcons.monitor(m(46), WHITE), "Экран", v -> {
-            try {
-                host.startActivity(new Intent(Settings.ACTION_CAST_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
-            } catch (Throwable t) {
-                openSettings(Settings.ACTION_DISPLAY_SETTINGS);
-            }
-        }));
-        dock.addView(dockAction(TiggoIcons.volume(m(46), WHITE), "Громкость", v -> {
-            try {
-                AudioManager am = (AudioManager) host.getSystemService(Context.AUDIO_SERVICE);
-                if (am != null) {
-                    am.adjustStreamVolume(AudioManager.STREAM_MUSIC, AudioManager.ADJUST_SAME,
-                            AudioManager.FLAG_SHOW_UI);
-                }
-            } catch (Throwable ignored) {
-                host.toast("Громкость недоступна");
-            }
-        }));
-        dock.addView(dockAction(TiggoIcons.squareOutline(m(46), WHITE), "Настроить экран",
-                v -> openSettingsSheet()));
+        // apps menu: a grey rounded square at the end of the bar
+        FrameLayout menu = new FrameLayout(host);
+        GradientDrawable menuBg = new GradientDrawable();
+        menuBg.setColor(0x66808488);
+        menuBg.setCornerRadius(m(24));
+        menu.setBackground(new RippleDrawable(ColorStateList.valueOf(0x66FFFFFF), menuBg, rippleMask(m(24))));
+        menu.addView(iconView(Glyphs.get("apps", m(46), WHITE)), new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        menu.setContentDescription("Все приложения");
+        menu.setOnClickListener(v -> openAllApps());
+        menu.setOnLongClickListener(v -> {
+            openSettingsSheet();
+            return true;
+        });
+        pressScale(menu);
+        LinearLayout.LayoutParams menuLp = lp(m(88), m(88));
+        menuLp.leftMargin = m(16);
+        dock.addView(menu, menuLp);
         return dock;
+    }
+
+    /** Name of the app above the pressed icon, as a small dark pill. */
+    private void showDockTip(View slot, String label) {
+        if (uiLayer == null || dockView == null || label == null || label.isEmpty()) return;
+        if (dockTip == null) {
+            dockTip = text("", 20, false);
+            dockTip.setGravity(Gravity.CENTER);
+            dockTip.setSingleLine(true);
+            dockTip.setPadding(m(16), m(7), m(16), m(7));
+            GradientDrawable bg = new GradientDrawable();
+            bg.setColor(0xCC2E3338);
+            bg.setCornerRadius(m(12));
+            bg.setStroke(Math.max(1, m(1)), 0x44FFFFFF);
+            dockTip.setBackground(bg);
+            uiLayer.addView(dockTip, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
+                    ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.START));
+        }
+        dockTip.setText(label);
+        dockTip.measure(View.MeasureSpec.UNSPECIFIED, View.MeasureSpec.UNSPECIFIED);
+        int tw = dockTip.getMeasuredWidth();
+        int th = dockTip.getMeasuredHeight();
+        int[] a = new int[2];
+        int[] b = new int[2];
+        slot.getLocationInWindow(a);
+        uiLayer.getLocationInWindow(b);
+        int cx = a[0] - b[0] + slot.getWidth() / 2;
+        int x = Math.max(m(8), Math.min(cx - tw / 2, Math.max(m(8), uiW - tw - m(8))));
+        int y = dockView.getTop() - th - m(8);
+        FrameLayout.LayoutParams lp = (FrameLayout.LayoutParams) dockTip.getLayoutParams();
+        lp.leftMargin = x;
+        lp.topMargin = y;
+        dockTip.setLayoutParams(lp);
+        dockTip.setVisibility(VISIBLE);
+        dockTip.bringToFront();
+    }
+
+    private void hideDockTip() {
+        if (dockTip != null) dockTip.setVisibility(GONE);
     }
 
     private List<MainActivity.AppEntry> sortedApps() {
@@ -1135,7 +1141,8 @@ final class TiggoHome extends FrameLayout {
         dockSlots.removeAllViews();
         int total = DOCK_COUNT + pool.size();
         for (int i = 0; i < total; i++) {
-            dockSlots.addView(buildDockSlot(i), new LinearLayout.LayoutParams(m(134),
+            if (i != 0 && dockShown(i) == null) continue;  // only real apps, no empty placeholders
+            dockSlots.addView(buildDockSlot(i), new LinearLayout.LayoutParams(m(136),
                     ViewGroup.LayoutParams.MATCH_PARENT));
         }
         if (dockScroll != null) dockScroll.scrollTo(0, 0);
@@ -1153,31 +1160,49 @@ final class TiggoHome extends FrameLayout {
         LinearLayout slot = new LinearLayout(host);
         slot.setOrientation(LinearLayout.VERTICAL);
         slot.setGravity(Gravity.CENTER);
-        slot.setBackground(rippleOnly(m(22)));
         MainActivity.AppEntry chosen = chosenDockApp(i);
         MainActivity.AppEntry shown = dockShown(i);
+        final String labelText = chosen != null && chosen.label != null ? chosen.label
+                : (shown != null && shown.label != null && i >= DOCK_COUNT ? shown.label : dockLabel(i));
+
+        final FrameLayout tile = new FrameLayout(host);
+        tile.setBackground(rippleOnly(m(26)));
         ImageView icon = new ImageView(host);
         icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
         Drawable d = shown != null ? iconOf(shown) : null;
         if (d != null) icon.setImageDrawable(d);
-        else icon.setImageBitmap(i == 0 ? TiggoIcons.carTile(m(72)) : TiggoIcons.plusTile(m(72)));
-        slot.addView(icon, lp(m(74), m(74)));
-        String labelText = chosen != null && chosen.label != null ? chosen.label
-                : (i >= DOCK_COUNT && shown != null && shown.label != null ? shown.label : dockLabel(i));
-        TextView label = text(labelText, 18, false);
-        label.setGravity(Gravity.CENTER);
-        label.setSingleLine(true);
-        label.setEllipsize(android.text.TextUtils.TruncateAt.END);
-        LinearLayout.LayoutParams labelLp = lp(ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
-        labelLp.topMargin = m(4);
-        slot.addView(label, labelLp);
+        else icon.setImageBitmap(TiggoIcons.carTile(m(86)));
+        tile.addView(icon, new FrameLayout.LayoutParams(m(86), m(86), Gravity.CENTER));
+        slot.addView(tile, lp(m(98), m(98)));
+
+        // while pressed: white ring around the icon and its name above (like the reference)
+        final GradientDrawable ring = new GradientDrawable();
+        ring.setColor(0x00000000);
+        ring.setCornerRadius(m(26));
+        ring.setStroke(Math.max(2, m(3)), 0xFFFFFFFF);
+        slot.setOnTouchListener((v, e) -> {
+            switch (e.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    tile.setBackground(ring);
+                    showDockTip(tile, labelText);
+                    break;
+                case MotionEvent.ACTION_UP:
+                case MotionEvent.ACTION_CANCEL:
+                    tile.setBackground(rippleOnly(m(26)));
+                    hideDockTip();
+                    break;
+                default:
+                    break;
+            }
+            return false;
+        });
         slot.setOnClickListener(v -> launchDockSlot(i));
         slot.setOnLongClickListener(v -> {
+            hideDockTip();
             openDockSlotSheet(i);
             return true;
         });
-        pressScale(slot);
+        slot.setContentDescription(labelText);
         return slot;
     }
 
