@@ -171,6 +171,7 @@ public class SettingsActivity extends Activity {
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
+        TiggoText.init(this);
         Clicks.init(this);
         String lang = getIntent().getStringExtra("lang");
         if (lang != null && !lang.isEmpty()) {
@@ -309,9 +310,9 @@ public class SettingsActivity extends Activity {
         LinearLayout navRow = new LinearLayout(this);
         navRow.setOrientation(LinearLayout.HORIZONTAL);
         TextView homeBtn = new TextView(this);
-        homeBtn.setText("Домой");
+        homeBtn.setText(TiggoText.t("Домой"));
         TextView backBtn = new TextView(this);
-        backBtn.setText("Назад");
+        backBtn.setText(TiggoText.t("Назад"));
         TextView[] navBtns = {homeBtn, backBtn};
         for (int bi = 0; bi < 2; bi++) {
             TextView btn = navBtns[bi];
@@ -1859,8 +1860,8 @@ public class SettingsActivity extends Activity {
                 },
                 null);
 
-        infoNote(tr("Checks GitHub Releases (techgenius1/tvOS-Launcher) for the latest APK and installs updates directly on your TV.",
-                "En güncel APK için GitHub Sürümlerini (techgenius1/tvOS-Launcher) kontrol eder ve güncellemeleri doğrudan TV'nize kurar."));
+        infoNote(tr("Checks GitHub Releases (gyurdzhyan8631-netizen/tvOS-Launcher) for the latest APK and installs updates directly on your TV.",
+                "En güncel APK için GitHub Sürümlerini (gyurdzhyan8631-netizen/tvOS-Launcher) kontrol eder ve güncellemeleri doğrudan TV'nize kurar."));
 
         if (!checkingLatestRelease) {
             checkingLatestRelease = true;
@@ -2428,13 +2429,13 @@ public class SettingsActivity extends Activity {
             int diff = pct - 100;
             String label = diff == 0 ? "100% (" + tr("Default", "Varsayılan") + ")"
                     : (diff > 0 ? pct + "% (+" + diff + "%)" : pct + "% (" + diff + "%)");
-            String sub = diff > 0 ? "Крупнее иконки: в колонке помещается меньше приложений"
-                    : (diff < 0 ? "Мельче иконки: в колонке помещается больше приложений"
-                                : "Обычный размер иконок на рабочем столе");
+            String sub = diff > 0 ? TiggoText.t("Крупнее иконки: в колонке помещается меньше приложений")
+                    : (diff < 0 ? TiggoText.t("Мельче иконки: в колонке помещается больше приложений")
+                                : TiggoText.t("Обычный размер иконок на рабочем столе"));
             choiceRow(label, sub, curPct == pct, () -> {
                 Scenes.setIconScalePercent(this, pct);
                 rebuildMainRows();
-                showStatusMsg("Размер иконок: " + pct + "%");
+                showStatusMsg(TiggoText.t("Размер иконок: ") + pct + "%");
             });
         }
     }

@@ -1,9 +1,17 @@
 name: Build Android APK
 
+# Every push to main / patch-* builds the APK (download it from the run's "Artifacts").
+# Pushing a tag v<version> (for example v3.0.0) also publishes a GitHub Release with the APK,
+# which the launcher's automatic updater picks up.
 on:
   push:
-    branches: [ main, master, patch-* ]
+    branches: [ main, master, 'patch-*' ]
+    tags: [ 'v*' ]
+  pull_request:
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   build:
@@ -24,11 +32,48 @@ jobs:
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "build-tools;34.0.0" "platforms;android-34"
 
+      - name: Read version
+        id: ver
+        run: |
+          NAME=$(sed -n 's/.*String NAME = "\(.*\)";.*/\1/p' src/com/techgenius/tvoslauncher/BuildVersion.java)
+          echo "name=$NAME" >> "$GITHUB_OUTPUT"
+          echo "Version $NAME"
+          if [[ "$GITHUB_REF" == refs/tags/v* && "${GITHUB_REF#refs/tags/v}" != "$NAME" ]]; then
+            echo "::error::Tag ${GITHUB_REF#refs/tags/} does not match BuildVersion.NAME ($NAME)"
+            exit 1
+          fi
+
+      # One permanent signing key (repository secrets), so updates install over the old version.
+      - name: Prepare signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.RELEASE_KEYSTORE_B64 }}
+        run: |
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/release.keystore"
+            echo "RELEASE_KEYSTORE=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
+          elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "::error::RELEASE_KEYSTORE_B64 secret is missing: a release must be signed with the release key"
+            exit 1
+          else
+            echo "::warning::No release key: the APK is signed with a temporary debug key"
+          fi
+
       - name: Build APK
+        env:
+          RELEASE_KEYSTORE_PASS: ${{ secrets.RELEASE_KEYSTORE_PASS }}
+          RELEASE_KEY_ALIAS: tvos-release
         run: bash build.sh
 
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: tvos-home
+          name: tvos-home-${{ steps.ver.outputs.name }}
           path: build/tvos-home.apk
+
+      - name: Publish GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: TIGGO 9 Launcher v${{ steps.ver.outputs.name }}
+          files: build/tvos-home.apk
+          generate_release_notes: true

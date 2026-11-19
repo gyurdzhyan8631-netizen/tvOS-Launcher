@@ -373,7 +373,7 @@ public final class Scenes {
     public static String iconScaleLabel(Context c) {
         int pct = getIconScalePercent(c);
         int diff = pct - 100;
-        if (diff == 0) return "100% (По умолчанию)";
+        if (diff == 0) return TiggoText.t("100% (По умолчанию)");
         return diff > 0 ? pct + "% (+" + diff + "%)" : pct + "% (" + diff + "%)";
     }
 

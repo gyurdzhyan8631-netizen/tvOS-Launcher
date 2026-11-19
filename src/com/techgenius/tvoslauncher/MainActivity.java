@@ -243,6 +243,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
+        TiggoText.init(this);
         activeInstance = this;
         // The wallpaper/artwork always covers the screen: skip the window's own full-screen fill
         // (this Mali-450 GPU is fill-rate bound, so every hidden full-screen layer costs frames).
@@ -509,7 +510,7 @@ public class MainActivity extends Activity {
         handler.post(weatherTick);
         LocalAdb.ensureKeepAliveWatchdog(this);
         LocalAdb.scheduleKeepAliveRepair(this, 1000L);
-        // automatic update checks are disabled in the car build
+        AppUpdater.checkAutoUpdateIfNeeded(this);  // new releases of the TIGGO build (own GitHub repository)
         SettingsActivity.prewarmCache(getApplicationContext());
         if (ambientShowcase || (getIntent() != null && "ambient".equals(getIntent().getStringExtra("panel")))) {
             if (getIntent() != null) getIntent().removeExtra("panel");
@@ -5186,7 +5187,7 @@ public class MainActivity extends Activity {
                     }
                 });
             } else {
-                toast("Погода отключена в настройках лаунчера");
+                toast(TiggoText.t("Погода отключена в настройках лаунчера"));
             }
             return;
         }

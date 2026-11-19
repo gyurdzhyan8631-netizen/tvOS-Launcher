@@ -122,7 +122,7 @@ final class I18nRu {
         m.put("Channel Up", "Канал вверх");
         m.put("Channels", "Каналы");
         m.put("Checked items are currently DISABLED. Disabling the stock system launcher (e.g. Google TV Home / LauncherX + setupwraith, Android TV Home, or TCL/Philips OEM Home) forces Android to use tvOS Launcher when pressing the Home key.", "Отмеченные пункты сейчас ОТКЛЮЧЕНЫ. Отключение системного лаунчера (например, Google TV Home / LauncherX + setupwraith, Android TV Home или OEM Home TCL/Philips) заставляет Android использовать tvOS Launcher по кнопке Home.");
-        m.put("Checks GitHub Releases (techgenius1/tvOS-Launcher) for the latest APK and installs updates directly on your TV.", "Проверяет GitHub Releases (techgenius1/tvOS-Launcher) на наличие свежего APK и устанавливает обновления прямо на устройство.");
+        m.put("Checks GitHub Releases (gyurdzhyan8631-netizen/tvOS-Launcher) for the latest APK and installs updates directly on your TV.", "Проверяет GitHub Releases (gyurdzhyan8631-netizen/tvOS-Launcher) на наличие свежего APK и устанавливает обновления прямо на устройство.");
         m.put("Choose Action", "Выберите действие");
         m.put("Choose Activity", "Выберите активность");
         m.put("Choose City", "Выберите город");

@@ -756,7 +756,7 @@ public final class I18n {
         sv("Downloading latest APK from GitHub…", "Laddar ner senaste APK från GitHub…");
         sv("Installing update…", "Installerar uppdatering…");
         sv("Update Failed", "Uppdatering misslyckades");
-        sv("Checks GitHub Releases (techgenius1/tvOS-Launcher) for the latest APK and installs updates directly on your TV.", "Söker på GitHub Releases (techgenius1/tvOS-Launcher) efter den senaste APK-filen och installerar uppdateringar direkt på din TV.");
+        sv("Checks GitHub Releases (gyurdzhyan8631-netizen/tvOS-Launcher) for the latest APK and installs updates directly on your TV.", "Söker på GitHub Releases (gyurdzhyan8631-netizen/tvOS-Launcher) efter den senaste APK-filen och installerar uppdateringar direkt på din TV.");
 
         // Home screen & Quick buttons & Setup
         sv("Keep watching", "Fortsätt titta");
@@ -1115,7 +1115,7 @@ public final class I18n {
         ko("Downloading latest APK from GitHub…", "GitHub에서 최신 APK를 다운로드하는 중…");
         ko("Installing update…", "업데이트 설치 중…");
         ko("Update Failed", "업데이트 실패");
-        ko("Checks GitHub Releases (techgenius1/tvOS-Launcher) for the latest APK and installs updates directly on your TV.", "GitHub Releases(techgenius1/tvOS-Launcher)에서 최신 APK를 확인하고 TV에 직접 업데이트를 설치합니다.");
+        ko("Checks GitHub Releases (gyurdzhyan8631-netizen/tvOS-Launcher) for the latest APK and installs updates directly on your TV.", "GitHub Releases(gyurdzhyan8631-netizen/tvOS-Launcher)에서 최신 APK를 확인하고 TV에 직접 업데이트를 설치합니다.");
 
         // Home screen & Quick buttons & Setup
         ko("Keep watching", "이어보기");

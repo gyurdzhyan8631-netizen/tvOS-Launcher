@@ -18,12 +18,18 @@ $JAR = "$SDK\platforms\android-34\android.jar"
 if (Test-Path "build") { Get-ChildItem -Path "build" | Remove-Item -Recurse -Force }
 New-Item -ItemType Directory -Force -Path "build\gen", "build\classes", "build\dex" | Out-Null
 
+# Version: one place, src\com\techgenius\tvoslauncher\BuildVersion.java
+$vf = Get-Content "src\com\techgenius\tvoslauncher\BuildVersion.java" -Raw
+$versionName = [regex]::Match($vf, 'String NAME = "([^"]+)"').Groups[1].Value
+$versionCode = [regex]::Match($vf, 'int CODE = (\d+)').Groups[1].Value
+Write-Host "Version $versionName ($versionCode)"
+
 & "$BT\aapt2.exe" compile --dir res -o build\res.zip
 if ($LASTEXITCODE -ne 0) { throw "aapt2 compile failed" }
 
 & "$BT\aapt2.exe" link -o build\unsigned.apk -I "$JAR" --manifest AndroidManifest.xml `
-    --java build\gen --min-sdk-version 24 --target-sdk-version 34 `
-    --version-code 15 --version-name "2.1.5" build\res.zip
+    -A assets --java build\gen --min-sdk-version 24 --target-sdk-version 34 `
+    --version-code $versionCode --version-name "$versionName" build\res.zip
 if ($LASTEXITCODE -ne 0) { throw "aapt2 link failed" }
 
 $javaFiles = Get-ChildItem -Recurse -Path src, build\gen -Filter "*.java" | Select-Object -ExpandProperty FullName

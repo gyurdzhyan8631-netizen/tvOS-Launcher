@@ -99,6 +99,7 @@ public class TiggoSettingsActivity extends Activity {
 
     @Override protected void onCreate(Bundle b) {
         super.onCreate(b);
+        TiggoText.init(this);
         Ui.font(this, "regular");
         prefs = TiggoTheme.prefs(this);
         rootView = new Root(this);
@@ -334,7 +335,7 @@ public class TiggoSettingsActivity extends Activity {
             FrameLayout.LayoutParams il = new FrameLayout.LayoutParams(m(50), m(50), Gravity.START | Gravity.CENTER_VERTICAL);
             il.leftMargin = m(26);
             row.addView(icon(sectionIcon(i, m(46))), il);
-            TextView label = text(SECTIONS[i], 27, i == section);
+            TextView label = text(TiggoText.t(SECTIONS[i]), 27, i == section);
             label.setMaxLines(2);
             FrameLayout.LayoutParams ll = new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT,
@@ -468,7 +469,7 @@ public class TiggoSettingsActivity extends Activity {
             try {
                 startActivity(new Intent(Settings.ACTION_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
             } catch (Throwable t2) {
-                toast("Настройки недоступны");
+                toast(TiggoText.t("Настройки недоступны"));
             }
         }
     }
@@ -478,9 +479,9 @@ public class TiggoSettingsActivity extends Activity {
     private void showSection(final int idx) {
         currentPage = () -> showSection(idx);
         switch (idx) {
-            case 1: pageSimple("Wi-Fi", wifiState(), "Открыть настройки Wi-Fi", Settings.ACTION_WIFI_SETTINGS,
+            case 1: pageSimple("Wi-Fi", wifiState(), TiggoText.t("Открыть настройки Wi-Fi"), Settings.ACTION_WIFI_SETTINGS,
                     Glyphs.get("wifi", m(52), Color.WHITE)); break;
-            case 2: pageSimple("Bluetooth", btState(), "Открыть настройки Bluetooth",
+            case 2: pageSimple("Bluetooth", btState(), TiggoText.t("Открыть настройки Bluetooth"),
                     Settings.ACTION_BLUETOOTH_SETTINGS, TiggoIcons.bluetooth(m(52), Color.WHITE)); break;
             case 3: pageDisplay(); break;
             case 4: pageSound(); break;
@@ -499,23 +500,23 @@ public class TiggoSettingsActivity extends Activity {
                 for (Network n : cm.getAllNetworks()) {
                     NetworkCapabilities nc = cm.getNetworkCapabilities(n);
                     if (nc != null && nc.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
-                            && nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) return "Подключено";
+                            && nc.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) return TiggoText.t("Подключено");
                 }
             }
         } catch (Throwable ignored) {
             // unknown
         }
-        return "Нет подключения";
+        return TiggoText.t("Нет подключения");
     }
 
     private String btState() {
         try {
             android.bluetooth.BluetoothAdapter a = android.bluetooth.BluetoothAdapter.getDefaultAdapter();
-            if (a != null) return a.isEnabled() ? "Включён" : "Выключен";
+            if (a != null) return a.isEnabled() ? TiggoText.t("Включён") : TiggoText.t("Выключен");
         } catch (Throwable ignored) {
             // permission missing
         }
-        return "Состояние неизвестно";
+        return TiggoText.t("Состояние неизвестно");
     }
 
     private void pageSimple(String title, String state, String button, final String action, Bitmap ic) {
@@ -565,7 +566,7 @@ public class TiggoSettingsActivity extends Activity {
             } catch (Throwable ignored) {
                 // default
             }
-            c.addView(sliderRow("Яркость экрана", 255, cur, p -> {
+            c.addView(sliderRow(TiggoText.t("Яркость экрана"), 255, cur, p -> {
                 try {
                     Settings.System.putInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS_MODE,
                             Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL);
@@ -576,8 +577,8 @@ public class TiggoSettingsActivity extends Activity {
                 return false;
             }));
         } else {
-            c.addView(settingRow(TiggoIcons.sun(m(52), 0xFFFFB020), "Разрешить изменение яркости",
-                    "Нужно разрешение", v -> {
+            c.addView(settingRow(TiggoIcons.sun(m(52), 0xFFFFB020), TiggoText.t("Разрешить изменение яркости"),
+                    TiggoText.t("Нужно разрешение"), v -> {
                         try {
                             startActivity(new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS,
                                     Uri.parse("package:" + getPackageName())));
@@ -587,10 +588,10 @@ public class TiggoSettingsActivity extends Activity {
                     }, true));
         }
         c.addView(rowDivider());
-        c.addView(settingRow(null, "Настройки экрана Android", null,
+        c.addView(settingRow(null, TiggoText.t("Настройки экрана Android"), null,
                 v -> openSystem(Settings.ACTION_DISPLAY_SETTINGS), true));
         addCard(col, c, 0);
-        showPage("Экран и яркость", col);
+        showPage(TiggoText.t("Экран и яркость"), col);
     }
 
     private void pageSound() {
@@ -598,13 +599,13 @@ public class TiggoSettingsActivity extends Activity {
         LinearLayout col = column();
         LinearLayout c = card();
         if (am != null) {
-            c.addView(sliderRow("Музыка, видео и навигация", am.getStreamMaxVolume(AudioManager.STREAM_MUSIC),
+            c.addView(sliderRow(TiggoText.t("Музыка, видео и навигация"), am.getStreamMaxVolume(AudioManager.STREAM_MUSIC),
                     am.getStreamVolume(AudioManager.STREAM_MUSIC), p -> {
                         am.setStreamVolume(AudioManager.STREAM_MUSIC, p, 0);
                         return false;
                     }));
             c.addView(rowDivider());
-            c.addView(sliderRow("Уведомления", am.getStreamMaxVolume(AudioManager.STREAM_NOTIFICATION),
+            c.addView(sliderRow(TiggoText.t("Уведомления"), am.getStreamMaxVolume(AudioManager.STREAM_NOTIFICATION),
                     am.getStreamVolume(AudioManager.STREAM_NOTIFICATION), p -> {
                         try {
                             am.setStreamVolume(AudioManager.STREAM_NOTIFICATION, p, 0);
@@ -615,49 +616,49 @@ public class TiggoSettingsActivity extends Activity {
                     }));
             c.addView(rowDivider());
         }
-        c.addView(settingRow(null, "Настройки звука Android", null,
+        c.addView(settingRow(null, TiggoText.t("Настройки звука Android"), null,
                 v -> openSystem(Settings.ACTION_SOUND_SETTINGS), true));
         addCard(col, c, 0);
-        showPage("Звук", col);
+        showPage(TiggoText.t("Звук"), col);
     }
 
     private void pageApps() {
         LinearLayout col = column();
         LinearLayout c = card();
-        c.addView(settingRow(TiggoIcons.apps4(m(52), Color.WHITE), "Показать или скрыть приложения", null,
+        c.addView(settingRow(TiggoIcons.apps4(m(52), Color.WHITE), TiggoText.t("Показать или скрыть приложения"), null,
                 v -> startActivity(new Intent(this, SettingsActivity.class)), true));
         c.addView(rowDivider());
-        c.addView(settingRow(TiggoIcons.apps4(m(52), Color.WHITE), "Управление приложениями Android", null,
+        c.addView(settingRow(TiggoIcons.apps4(m(52), Color.WHITE), TiggoText.t("Управление приложениями Android"), null,
                 v -> openSystem(Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS), true));
         addCard(col, c, 0);
-        showPage("Приложения", col);
+        showPage(TiggoText.t("Приложения"), col);
     }
 
     private void pageSystem() {
         LinearLayout col = column();
         LinearLayout c = card();
-        c.addView(settingRow(TiggoIcons.infoCircle(m(52), Color.WHITE), "Язык и погода лаунчера", null,
+        c.addView(settingRow(TiggoIcons.infoCircle(m(52), Color.WHITE), TiggoText.t("Язык и погода лаунчера"), null,
                 v -> startActivity(new Intent(this, SettingsActivity.class)), true));
         c.addView(rowDivider());
-        c.addView(settingRow(TiggoIcons.clockFace(m(52), Color.WHITE), "Дата и время", null,
+        c.addView(settingRow(TiggoIcons.clockFace(m(52), Color.WHITE), TiggoText.t("Дата и время"), null,
                 v -> openSystem(Settings.ACTION_DATE_SETTINGS), true));
         c.addView(rowDivider());
-        c.addView(settingRow(TiggoIcons.monitor(m(52), Color.WHITE), "Открывать приложения в окне",
-                prefs.getBoolean("tiggo9_window_mode", false) ? "Вкл" : "Выкл", v -> {
+        c.addView(settingRow(TiggoIcons.monitor(m(52), Color.WHITE), TiggoText.t("Открывать приложения в окне"),
+                prefs.getBoolean("tiggo9_window_mode", false) ? TiggoText.t("Вкл") : TiggoText.t("Выкл"), v -> {
                     prefs.edit().putBoolean("tiggo9_window_mode", !prefs.getBoolean("tiggo9_window_mode", false)).apply();
                     rerun();
                 }, false));
         c.addView(rowDivider());
-        c.addView(settingRow(null, "Размер окна", prefs.getInt("tiggo9_window_pct", 58) + "%",
+        c.addView(settingRow(null, TiggoText.t("Размер окна"), prefs.getInt("tiggo9_window_pct", 58) + "%",
                 v -> openSub(this::pageWindowSize), true));
         c.addView(rowDivider());
-        c.addView(settingRow(null, "Включить окна свободной формы (Android)", null,
+        c.addView(settingRow(null, TiggoText.t("Включить окна свободной формы (Android)"), null,
                 v -> openSub(this::pageFreeformHelp), true));
         c.addView(rowDivider());
-        c.addView(settingRow(null, "Все настройки Android", null,
+        c.addView(settingRow(null, TiggoText.t("Все настройки Android"), null,
                 v -> openSystem(Settings.ACTION_SETTINGS), true));
         addCard(col, c, 0);
-        showPage("Система", col);
+        showPage(TiggoText.t("Система"), col);
     }
 
     private void pageAbout() {
@@ -671,37 +672,37 @@ public class TiggoSettingsActivity extends Activity {
         }
         c.addView(settingRow(TiggoIcons.star(m(52), Color.WHITE), "TIGGO 9 Launcher", "v" + version, null, false));
         c.addView(rowDivider());
-        c.addView(settingRow(TiggoIcons.dots9(m(52), Color.WHITE), "Воспроизвести промо-ролик", null, v -> {
+        c.addView(settingRow(TiggoIcons.dots9(m(52), Color.WHITE), TiggoText.t("Воспроизвести промо-ролик"), null, v -> {
             prefs.edit().putBoolean("tiggo9_play_promo", true).apply();
             finish();
         }, true));
         c.addView(rowDivider());
-        c.addView(settingRow(null, "Выбрать видео для ролика (MP4)", null, v -> {
+        c.addView(settingRow(null, TiggoText.t("Выбрать видео для ролика (MP4)"), null, v -> {
             Intent pick = new Intent(Intent.ACTION_GET_CONTENT);
             pick.setType("video/*");
             pick.addCategory(Intent.CATEGORY_OPENABLE);
             try {
                 startActivityForResult(pick, REQ_VIDEO);
             } catch (Throwable t) {
-                toast("Выбор видео недоступен на этом устройстве");
+                toast(TiggoText.t("Выбор видео недоступен на этом устройстве"));
             }
         }, true));
         c.addView(rowDivider());
-        c.addView(settingRow(null, "Сбросить оформление", null, v -> {
+        c.addView(settingRow(null, TiggoText.t("Сбросить оформление"), null, v -> {
             SharedPreferences.Editor ed = prefs.edit();
             ed.remove(TiggoTheme.K_THEME).remove(TiggoTheme.K_ACCENT).remove(TiggoTheme.K_MENU)
                     .remove(TiggoTheme.K_CLOCK).remove(TiggoTheme.K_WEATHER);
             for (String id : new String[]{"weather", "nav", "music"}) ed.remove(TiggoTheme.K_WIDGET_OFF + id);
             ed.apply();
-            toast("Оформление сброшено");
+            toast(TiggoText.t("Оформление сброшено"));
             build();
         }, false));
         addCard(col, c, 0);
-        TextView hint = text("Долгое нажатие на логотип TIGGO 9 на главном экране запускает ролик.", 22, false);
+        TextView hint = text(TiggoText.t("Долгое нажатие на логотип TIGGO 9 на главном экране запускает ролик."), 22, false);
         hint.setAlpha(0.7f);
         hint.setPadding(m(8), m(24), m(8), 0);
         col.addView(hint);
-        showPage("О лаунчере", col);
+        showPage(TiggoText.t("О лаунчере"), col);
     }
 
     // ------------------------------------------------------------------ personalization
@@ -726,8 +727,8 @@ public class TiggoSettingsActivity extends Activity {
         LinearLayout tcol = new LinearLayout(this);
         tcol.setOrientation(LinearLayout.VERTICAL);
         tcol.setGravity(Gravity.CENTER_VERTICAL);
-        tcol.addView(text("Обои", 44, true));
-        TextView sub = text("Выберите изображение для главного экрана", 24, false);
+        tcol.addView(text(TiggoText.t("Обои"), 44, true));
+        TextView sub = text(TiggoText.t("Выберите изображение для главного экрана"), 24, false);
         sub.setAlpha(0.85f);
         tcol.addView(sub);
         LinearLayout.LayoutParams tl = lp(0, ViewGroup.LayoutParams.WRAP_CONTENT);
@@ -744,68 +745,81 @@ public class TiggoSettingsActivity extends Activity {
         wall.setOnClickListener(v -> openSub(this::pageWallpapers));
         addCard(col, wall, 0);
 
-        TextView lab = text("Темы оформления", 34, false);
+        TextView lab = text(TiggoText.t("Темы оформления"), 34, false);
         LinearLayout.LayoutParams ll = lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         ll.topMargin = m(30);
         ll.bottomMargin = m(14);
         ll.leftMargin = m(8);
         col.addView(lab, ll);
-        LinearLayout themes = new LinearLayout(this);
-        themes.setOrientation(LinearLayout.HORIZONTAL);
-        int cur = TiggoTheme.theme(this);
-        for (int i = 0; i < TiggoTheme.THEME_NAMES.length; i++) {
-            LinearLayout.LayoutParams tp = lp(0, m(150));
-            tp.weight = 1f;
-            if (i > 0) tp.leftMargin = m(18);
-            themes.addView(themeCard(i, i == cur), tp);
+        int cur = TiggoTheme.chosenTheme(this);
+        // four theme cards per row: classic looks, then day / dawn / night / auto
+        for (int row = 0; row * 4 < TiggoTheme.THEME_NAMES.length; row++) {
+            LinearLayout themes = new LinearLayout(this);
+            themes.setOrientation(LinearLayout.HORIZONTAL);
+            for (int i = row * 4; i < Math.min(row * 4 + 4, TiggoTheme.THEME_NAMES.length); i++) {
+                LinearLayout.LayoutParams tp = lp(0, m(150));
+                tp.weight = 1f;
+                if (i > row * 4) tp.leftMargin = m(18);
+                themes.addView(themeCard(i, i == cur), tp);
+            }
+            LinearLayout.LayoutParams rl = lp(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            if (row > 0) rl.topMargin = m(18);
+            col.addView(themes, rl);
         }
-        col.addView(themes, lp(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        if (cur == TiggoTheme.THEME_AUTO) {
+            TextView now = text(TiggoText.t("Сейчас: ") + TiggoText.t(TiggoTheme.THEME_NAMES[TiggoTheme.theme(this)]) + " · " + sunLabel(), 22, false);
+            now.setAlpha(0.8f);
+            LinearLayout.LayoutParams nl = lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+            nl.topMargin = m(12);
+            nl.leftMargin = m(8);
+            col.addView(now, nl);
+        }
 
         LinearLayout list = card();
         boolean glassOn = prefs.getBoolean(TiggoTheme.K_TILE_GLASS, true);
-        list.addView(settingRow(TiggoIcons.apps4(m(52), 0xFF7FB2FF), "Стиль иконок",
-                glassOn ? "Стеклянный" : "Оригинальные", v -> {
+        list.addView(settingRow(TiggoIcons.apps4(m(52), 0xFF7FB2FF), TiggoText.t("Стиль иконок"),
+                glassOn ? TiggoText.t("Стеклянный") : TiggoText.t("Оригинальные"), v -> {
                     prefs.edit().putBoolean(TiggoTheme.K_TILE_GLASS, !prefs.getBoolean(TiggoTheme.K_TILE_GLASS, true)).apply();
                     rerun();
                 }, true));
         list.addView(rowDivider());
-        list.addView(settingRow(TiggoIcons.apps4(m(52), Color.WHITE), "Размер иконок", Scenes.iconScaleLabel(this),
+        list.addView(settingRow(TiggoIcons.apps4(m(52), Color.WHITE), TiggoText.t("Размер иконок"), Scenes.iconScaleLabel(this),
                 v -> openSub(this::pageIconSize), true));
         list.addView(rowDivider());
-        list.addView(settingRow(TiggoIcons.apps4(m(52), Color.WHITE), "Размер дока", Scenes.dockScaleLabel(this),
+        list.addView(settingRow(TiggoIcons.apps4(m(52), Color.WHITE), TiggoText.t("Размер дока"), Scenes.dockScaleLabel(this),
                 v -> openSub(this::pageDockSize), true));
         list.addView(rowDivider());
-        list.addView(settingRow(TiggoIcons.note(m(52), Color.WHITE), "Музыкальное приложение", widgetAppLabel("music"),
-                v -> openSub(() -> pageWidgetApp("music", "Музыкальное приложение")), true));
+        list.addView(settingRow(TiggoIcons.note(m(52), Color.WHITE), TiggoText.t("Музыкальное приложение"), widgetAppLabel("music"),
+                v -> openSub(() -> pageWidgetApp("music", TiggoText.t("Музыкальное приложение"))), true));
         list.addView(rowDivider());
-        list.addView(settingRow(TiggoIcons.navigation(m(52), Color.WHITE), "Навигатор", widgetAppLabel("nav"),
-                v -> openSub(() -> pageWidgetApp("nav", "Навигатор")), true));
+        list.addView(settingRow(TiggoIcons.navigation(m(52), Color.WHITE), TiggoText.t("Навигатор"), widgetAppLabel("nav"),
+                v -> openSub(() -> pageWidgetApp("nav", TiggoText.t("Навигатор"))), true));
         list.addView(rowDivider());
-        list.addView(settingRow(TiggoIcons.apps4(m(52), Color.WHITE), "Пак иконок", iconPackName(),
+        list.addView(settingRow(TiggoIcons.apps4(m(52), Color.WHITE), TiggoText.t("Пак иконок"), iconPackName(),
                 v -> openSub(this::pageIconPack), true));
         list.addView(rowDivider());
-        list.addView(settingRow(TiggoIcons.clockFace(m(52), Color.WHITE), "Стиль часов",
-                TiggoTheme.CLOCK_NAMES[TiggoTheme.get(this, TiggoTheme.K_CLOCK, 1, 3)],
-                v -> openSub(() -> pageChoice("Стиль часов", TiggoTheme.CLOCK_NAMES,
+        list.addView(settingRow(TiggoIcons.clockFace(m(52), Color.WHITE), TiggoText.t("Стиль часов"),
+                TiggoText.t(TiggoTheme.CLOCK_NAMES[TiggoTheme.get(this, TiggoTheme.K_CLOCK, 1, 3)]),
+                v -> openSub(() -> pageChoice(TiggoText.t("Стиль часов"), TiggoTheme.CLOCK_NAMES,
                         TiggoTheme.get(this, TiggoTheme.K_CLOCK, 1, 3), i -> {
                             TiggoTheme.put(this, TiggoTheme.K_CLOCK, i);
                             return false;
                         })), true));
         list.addView(rowDivider());
-        list.addView(settingRow(Glyphs.get("cloud", m(52), Color.WHITE), "Стиль погоды",
-                TiggoTheme.WEATHER_NAMES[TiggoTheme.get(this, TiggoTheme.K_WEATHER, 0, 2)],
-                v -> openSub(() -> pageChoice("Стиль погоды", TiggoTheme.WEATHER_NAMES,
+        list.addView(settingRow(Glyphs.get("cloud", m(52), Color.WHITE), TiggoText.t("Стиль погоды"),
+                TiggoText.t(TiggoTheme.WEATHER_NAMES[TiggoTheme.get(this, TiggoTheme.K_WEATHER, 0, 2)]),
+                v -> openSub(() -> pageChoice(TiggoText.t("Стиль погоды"), TiggoTheme.WEATHER_NAMES,
                         TiggoTheme.get(this, TiggoTheme.K_WEATHER, 0, 2), i -> {
                             TiggoTheme.put(this, TiggoTheme.K_WEATHER, i);
                             return false;
                         })), true));
         list.addView(rowDivider());
-        list.addView(settingRow(TiggoIcons.widgets(m(52), Color.WHITE), "Виджеты", visibleWidgetsLabel(),
+        list.addView(settingRow(TiggoIcons.widgets(m(52), Color.WHITE), TiggoText.t("Виджеты"), visibleWidgetsLabel(),
                 v -> openSub(this::pageWidgets), true));
         list.addView(rowDivider());
-        list.addView(settingRow(TiggoIcons.palette(m(52), Color.WHITE), "Градиент меню",
-                TiggoTheme.MENU_NAMES[TiggoTheme.get(this, TiggoTheme.K_MENU, 0, 3)],
-                v -> openSub(() -> pageChoice("Градиент меню", TiggoTheme.MENU_NAMES,
+        list.addView(settingRow(TiggoIcons.palette(m(52), Color.WHITE), TiggoText.t("Градиент меню"),
+                TiggoText.t(TiggoTheme.MENU_NAMES[TiggoTheme.get(this, TiggoTheme.K_MENU, 0, 3)]),
+                v -> openSub(() -> pageChoice(TiggoText.t("Градиент меню"), TiggoTheme.MENU_NAMES,
                         TiggoTheme.get(this, TiggoTheme.K_MENU, 0, 3), i -> {
                             TiggoTheme.put(this, TiggoTheme.K_MENU, i);
                             return true;
@@ -813,7 +827,7 @@ public class TiggoSettingsActivity extends Activity {
         list.addView(rowDivider());
         list.addView(accentRow());
         addCard(col, list, 22);
-        showPage("Персонализация", col);
+        showPage(TiggoText.t("Персонализация"), col);
     }
 
     private View accentRow() {
@@ -823,7 +837,7 @@ public class TiggoSettingsActivity extends Activity {
         row.setPadding(m(30), 0, m(30), 0);
         row.setMinimumHeight(m(90));
         row.addView(icon(TiggoIcons.palette(m(52), Color.WHITE)), lp(m(52), m(52)));
-        TextView t = text("Цветовая схема", 28, false);
+        TextView t = text(TiggoText.t("Цветовая схема"), 28, false);
         LinearLayout.LayoutParams tl = lp(0, ViewGroup.LayoutParams.WRAP_CONTENT);
         tl.weight = 1f;
         tl.leftMargin = m(26);
@@ -854,7 +868,7 @@ public class TiggoSettingsActivity extends Activity {
         g.setCornerRadius(m(26));
         g.setStroke(selected ? Math.max(2, m(4)) : Math.max(1, m(2)), selected ? accent() : 0x66FFFFFF);
         f.setBackground(g);
-        TextView t = text(TiggoTheme.THEME_NAMES[i], 26, true);
+        TextView t = text(TiggoText.t(TiggoTheme.THEME_NAMES[i]), 26, true);
         FrameLayout.LayoutParams tl = new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM | Gravity.START);
         tl.leftMargin = m(20);
@@ -879,18 +893,30 @@ public class TiggoSettingsActivity extends Activity {
         return f;
     }
 
+    /** "Восход 07:48 · Закат 16:21" for the saved weather location. */
+    private String sunLabel() {
+        double[] sun = TiggoTheme.sunTimes(this, java.util.Calendar.getInstance());
+        if (Double.isNaN(sun[0])) return sun[1] > 0 ? TiggoText.t("Полярный день") : TiggoText.t("Полярная ночь");
+        return TiggoText.t("Восход ") + hm(sun[0]) + TiggoText.t(" · Закат ") + hm(sun[1]);
+    }
+
+    private static String hm(double minutes) {
+        int m = (int) Math.round(minutes) % (24 * 60);
+        return String.format(java.util.Locale.US, "%02d:%02d", m / 60, m % 60);
+    }
+
     private String visibleWidgetsLabel() {
         int n = 0;
         for (String id : new String[]{"weather", "nav", "music"}) if (TiggoTheme.widgetVisible(this, id)) n++;
-        return n == 3 ? "Показать все" : "Показано: " + n;
+        return n == 3 ? TiggoText.t("Показать все") : TiggoText.t("Показано: ") + n;
     }
 
     private String iconPackName() {
         String saved = prefs.getString(TiggoTheme.K_ICON_PACK, IconPacks.AUTO);
-        if (IconPacks.AUTO.equals(saved)) return "Авто";
-        if (IconPacks.NONE.equals(saved)) return "Системные";
+        if (IconPacks.AUTO.equals(saved)) return TiggoText.t("Авто");
+        if (IconPacks.NONE.equals(saved)) return TiggoText.t("Системные");
         for (IconPacks.Pack p : IconPacks.installed(this)) if (p.pkg.equals(saved)) return p.label;
-        return "Авто";
+        return TiggoText.t("Авто");
     }
 
     private void pageChoice(String title, String[] options, int current, IntPick pick) {
@@ -899,7 +925,7 @@ public class TiggoSettingsActivity extends Activity {
         for (int i = 0; i < options.length; i++) {
             final int idx = i;
             if (i > 0) c.addView(rowDivider());
-            c.addView(settingRow(null, options[i], i == current ? "✓" : null, v -> {
+            c.addView(settingRow(null, TiggoText.t(options[i]), i == current ? "✓" : null, v -> {
                 boolean rebuild = pick.on(idx);
                 goBack();
                 if (rebuild) build();
@@ -914,7 +940,7 @@ public class TiggoSettingsActivity extends Activity {
         int cur = 0;
         for (int i = 0; i < steps.length; i++) {
             int diff = steps[i] - 100;
-            labels[i] = diff == 0 ? "100% (По умолчанию)" : (diff > 0 ? steps[i] + "% (+" + diff + "%)"
+            labels[i] = diff == 0 ? TiggoText.t("100% (По умолчанию)") : (diff > 0 ? steps[i] + "% (+" + diff + "%)"
                     : steps[i] + "% (" + diff + "%)");
             if (steps[i] == current) cur = i;
         }
@@ -926,23 +952,23 @@ public class TiggoSettingsActivity extends Activity {
     }
 
     private void pageIconSize() {
-        pagePercent("Размер иконок", new int[]{60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160},
+        pagePercent(TiggoText.t("Размер иконок"), new int[]{60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 160},
                 Scenes.getIconScalePercent(this), false);
     }
 
     private void pageDockSize() {
-        pagePercent("Размер дока", new int[]{50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150},
+        pagePercent(TiggoText.t("Размер дока"), new int[]{50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150},
                 Scenes.getDockScalePercent(this), true);
     }
 
     private String widgetAppLabel(String id) {
         String pkg = prefs.getString("tiggo9_wapp_pkg_" + id, null);
-        if (pkg == null) return "Авто";
+        if (pkg == null) return TiggoText.t("Авто");
         try {
             PackageManager pm = getPackageManager();
             return pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString();
         } catch (Throwable t) {
-            return "Авто";
+            return TiggoText.t("Авто");
         }
     }
 
@@ -959,7 +985,7 @@ public class TiggoSettingsActivity extends Activity {
         LinearLayout col = column();
         LinearLayout c = card();
         final String current = prefs.getString("tiggo9_wapp_pkg_" + id, null);
-        c.addView(settingRow(null, "Автоматически", current == null ? "✓" : null, v -> {
+        c.addView(settingRow(null, TiggoText.t("Автоматически"), current == null ? "✓" : null, v -> {
             prefs.edit().remove("tiggo9_wapp_pkg_" + id).remove("tiggo9_wapp_" + id).apply();
             goBack();
         }, false));
@@ -979,7 +1005,7 @@ public class TiggoSettingsActivity extends Activity {
             }
             c.addView(settingRow(ic, ri.loadLabel(pm).toString(), pkg.equals(current) ? "✓" : null, v -> {
                 prefs.edit().putString("tiggo9_wapp_pkg_" + id, pkg).remove("tiggo9_wapp_" + id).apply();
-                toast("Источник: " + widgetAppLabel(id));
+                toast(TiggoText.t("Источник: ") + widgetAppLabel(id));
                 goBack();
             }, false));
         }
@@ -993,10 +1019,10 @@ public class TiggoSettingsActivity extends Activity {
         int cur = 2;
         int saved = prefs.getInt("tiggo9_window_pct", 58);
         for (int i = 0; i < steps.length; i++) {
-            labels[i] = steps[i] + "% ширины экрана" + (steps[i] == 58 ? " (По умолчанию)" : "");
+            labels[i] = steps[i] + TiggoText.t("% ширины экрана") + (steps[i] == 58 ? TiggoText.t(" (По умолчанию)") : "");
             if (steps[i] == saved) cur = i;
         }
-        pageChoice("Размер окна", labels, cur, i -> {
+        pageChoice(TiggoText.t("Размер окна"), labels, cur, i -> {
             prefs.edit().putInt("tiggo9_window_pct", steps[i]).apply();
             return false;
         });
@@ -1005,18 +1031,15 @@ public class TiggoSettingsActivity extends Activity {
     private void pageFreeformHelp() {
         LinearLayout col = column();
         LinearLayout c = card();
-        c.addView(settingRow(null, "Открыть параметры разработчика", null,
+        c.addView(settingRow(null, TiggoText.t("Открыть параметры разработчика"), null,
                 v -> openSystem(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS), true));
         addCard(col, c, 0);
-        TextView hint = text("Чтобы приложения открывались в окне, которое можно двигать пальцем, в параметрах "
-                + "разработчика включите «Окна свободной формы» и «Изменение размера в многооконном режиме», "
-                + "затем перезагрузите магнитолу. Либо по ADB: settings put global enable_freeform_support 1 и "
-                + "settings put global force_resizable_activities 1.", 24, false);
+        TextView hint = text(TiggoText.t("Чтобы приложения открывались в окне, которое можно двигать пальцем, в параметрах разработчика включите «Окна свободной формы» и «Изменение размера в многооконном режиме», затем перезагрузите магнитолу. Либо по ADB: settings put global enable_freeform_support 1 и settings put global force_resizable_activities 1."), 24, false);
         hint.setAlpha(0.8f);
         hint.setGravity(Gravity.TOP);
         hint.setPadding(m(8), m(26), m(8), 0);
         col.addView(hint);
-        showPage("Оконный режим", col);
+        showPage(TiggoText.t("Оконный режим"), col);
     }
 
     private void pageIconPack() {
@@ -1026,9 +1049,9 @@ public class TiggoSettingsActivity extends Activity {
         List<String> keys = new ArrayList<>();
         List<String> names = new ArrayList<>();
         keys.add(IconPacks.AUTO);
-        names.add("Авто (Fluid, если установлен)");
+        names.add(TiggoText.t("Авто (Fluid, если установлен)"));
         keys.add(IconPacks.NONE);
-        names.add("Системные иконки");
+        names.add(TiggoText.t("Системные иконки"));
         for (IconPacks.Pack p : IconPacks.installed(this)) {
             keys.add(p.pkg);
             names.add(p.label);
@@ -1042,28 +1065,28 @@ public class TiggoSettingsActivity extends Activity {
             }, false));
         }
         addCard(col, c, 0);
-        showPage("Пак иконок", col);
+        showPage(TiggoText.t("Пак иконок"), col);
     }
 
     private void pageWidgets() {
         LinearLayout col = column();
         LinearLayout c = card();
         String[] ids = {"weather", "nav", "music"};
-        String[] names = {"Погода", "Навигация", "Музыка"};
+        String[] names = {TiggoText.t("Погода"), TiggoText.t("Навигация"), TiggoText.t("Музыка")};
         for (int i = 0; i < ids.length; i++) {
             final String id = ids[i];
             if (i > 0) c.addView(rowDivider());
-            c.addView(settingRow(null, names[i], TiggoTheme.widgetVisible(this, id) ? "Вкл" : "Выкл", v -> {
+            c.addView(settingRow(null, names[i], TiggoTheme.widgetVisible(this, id) ? TiggoText.t("Вкл") : TiggoText.t("Выкл"), v -> {
                 prefs.edit().putBoolean(TiggoTheme.K_WIDGET_OFF + id, TiggoTheme.widgetVisible(this, id)).apply();
                 rerun();
             }, false));
         }
         addCard(col, c, 0);
-        TextView hint = text("Порядок и размер виджетов меняются удержанием виджета на главном экране.", 22, false);
+        TextView hint = text(TiggoText.t("Порядок и размер виджетов меняются удержанием виджета на главном экране."), 22, false);
         hint.setAlpha(0.7f);
         hint.setPadding(m(8), m(22), m(8), 0);
         col.addView(hint);
-        showPage("Виджеты", col);
+        showPage(TiggoText.t("Виджеты"), col);
     }
 
     // ---- wallpapers
@@ -1084,16 +1107,16 @@ public class TiggoSettingsActivity extends Activity {
         final List<String> captions = new ArrayList<>();
         for (int i = 0; i < WALL_PRESETS.length; i++) {
             keys.add(WALL_PRESETS[i]);
-            captions.add(WALL_CAPTIONS[i]);
+            captions.add(TiggoText.t(WALL_CAPTIONS[i]));
         }
         for (int i = 0; i < MainActivity.WALL_KEYS.length; i++) {
             keys.add(MainActivity.WALL_KEYS[i]);
             int ci = WALL_PRESETS.length + i;
-            captions.add(ci < WALL_CAPTIONS.length ? WALL_CAPTIONS[ci] : "");
+            captions.add(ci < WALL_CAPTIONS.length ? TiggoText.t(WALL_CAPTIONS[ci]) : "");
         }
         if (current.startsWith("tiggo:")) {
             keys.add(0, current);
-            captions.add(0, "Своё фото");
+            captions.add(0, TiggoText.t("Своё фото"));
         }
         final List<ImageView> thumbs = new ArrayList<>();
         int perRow = 3;
@@ -1105,7 +1128,7 @@ public class TiggoSettingsActivity extends Activity {
         plus.setGravity(Gravity.CENTER);
         gallery.addView(plus, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT));
-        TextView gl = text("Из галереи", 24, true);
+        TextView gl = text(TiggoText.t("Из галереи"), 24, true);
         FrameLayout.LayoutParams glp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
         glp.bottomMargin = m(16);
@@ -1117,7 +1140,7 @@ public class TiggoSettingsActivity extends Activity {
             try {
                 startActivityForResult(pick, REQ_WALL);
             } catch (Throwable t) {
-                toast("Выбор фото недоступен на этом устройстве");
+                toast(TiggoText.t("Выбор фото недоступен на этом устройстве"));
             }
         });
         cells.add(gallery);
@@ -1144,7 +1167,7 @@ public class TiggoSettingsActivity extends Activity {
             f.addView(cap, cl);
             f.setOnClickListener(v -> {
                 prefs.edit().putString(TiggoTheme.K_WALL, key).apply();
-                toast("Обои изменены");
+                toast(TiggoText.t("Обои изменены"));
                 goBack();
             });
             cells.add(f);
@@ -1170,7 +1193,7 @@ public class TiggoSettingsActivity extends Activity {
             fp.leftMargin = m(18);
             row.addView(filler, fp);
         }
-        showPage("Обои", col);
+        showPage(TiggoText.t("Обои"), col);
         final List<String> loadKeys = keys;
         new Thread(() -> {
             for (int i = 0; i < loadKeys.size(); i++) {
@@ -1195,11 +1218,11 @@ public class TiggoSettingsActivity extends Activity {
                     final String name = TiggoHome.importWallpaperFile(this, uri);
                     runOnUiThread(() -> {
                         prefs.edit().putString(TiggoTheme.K_WALL, "tiggo:" + name).apply();
-                        toast("Обои изменены");
+                        toast(TiggoText.t("Обои изменены"));
                         goBack();
                     });
                 } catch (Throwable t) {
-                    runOnUiThread(() -> toast("Не удалось открыть изображение"));
+                    runOnUiThread(() -> toast(TiggoText.t("Не удалось открыть изображение")));
                 }
             }).start();
         } else if (req == REQ_VIDEO) {
@@ -1209,9 +1232,9 @@ public class TiggoSettingsActivity extends Activity {
                     byte[] buf = new byte[65536];
                     int n;
                     while (in != null && (n = in.read(buf)) > 0) out.write(buf, 0, n);
-                    runOnUiThread(() -> toast("Ролик сохранён: удерживайте логотип на главном экране"));
+                    runOnUiThread(() -> toast(TiggoText.t("Ролик сохранён: удерживайте логотип на главном экране")));
                 } catch (Throwable t) {
-                    runOnUiThread(() -> toast("Не удалось сохранить видео"));
+                    runOnUiThread(() -> toast(TiggoText.t("Не удалось сохранить видео")));
                 }
             }).start();
         }

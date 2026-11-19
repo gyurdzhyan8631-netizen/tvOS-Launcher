@@ -1,7 +1,24 @@
-# tvOS Launcher (`v2.1.5`)
+# tvOS Launcher — TIGGO 9 Premium (`v3.0.0`)
 
 > 🇹🇷 **Türkçe dokümantasyon ve kurulum rehberi için:** **[README_TR.md (Türkçe)](README_TR.md)**  
-> 📦 **Download Latest APK (`v2.1.5`):** **[GitHub Releases](https://github.com/techgenius1/tvOS-Launcher/releases/latest)**
+> 📦 **Download Latest APK (`v3.0.0`):** **[GitHub Releases](https://github.com/gyurdzhyan8631-netizen/tvOS-Launcher/releases/latest)**
+
+## 🚗 Сборка TIGGO 9 Premium
+
+Сенсорный главный экран для мультимедиа Chery TIGGO 9 Premium на основе tvOS Launcher.
+
+- **Темы оформления:** Стильная, Тёмная, Яркая, Природа, **День**, **Рассвет**, **Ночь** и **Авто (по солнцу)**. В режиме «Авто» тема меняется сама по восходу и закату в месте, где стоит автомобиль: рассветная палитра — около восхода и заката, дневная — днём, ночная — после заката.
+- **Автообновление** из [Releases этого репозитория](https://github.com/gyurdzhyan8631-netizen/tvOS-Launcher/releases): лаунчер сам предлагает установить новую версию.
+- **Экономия ресурсов:** таймеры главного экрана (статус сети, часы, музыка) работают только когда экран виден; старые обои освобождаются из памяти.
+- **Язык:** русский по умолчанию, тексты экранов TIGGO переведены и на английский.
+
+### Как выпустить новую версию
+
+1. Поменяйте `NAME` и `CODE` в [`BuildVersion.java`](src/com/techgenius/tvoslauncher/BuildVersion.java) (единственное место с номером версии).
+2. Отправьте изменения и тег: `git tag v3.0.1 && git push origin v3.0.1`.
+3. GitHub Actions соберёт APK, подпишет его постоянным ключом (секреты `RELEASE_KEYSTORE_B64` и `RELEASE_KEYSTORE_PASS`) и опубликует релиз. Магнитолы обновятся сами.
+
+После каждого пуша в `main` или `patch-*` готовый APK лежит во вкладке **Actions → запуск → Artifacts**.
 
 ![tvOS Launcher Header](screenshots_en/Header_EN.jpg)
 

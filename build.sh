@@ -20,10 +20,16 @@ command -v javac >/dev/null || { echo "javac not found — install JDK 17+ or se
 
 rm -rf build && mkdir -p build/gen build/classes build/dex
 
+# Version: one place, src/com/techgenius/tvoslauncher/BuildVersion.java (CI may override it).
+VF=src/com/techgenius/tvoslauncher/BuildVersion.java
+VERSION_NAME="${VERSION_NAME:-$(sed -n 's/.*String NAME = "\(.*\)";.*/\1/p' "$VF")}"
+VERSION_CODE="${VERSION_CODE:-$(sed -n 's/.*int CODE = \([0-9]*\);.*/\1/p' "$VF")}"
+echo "Version $VERSION_NAME ($VERSION_CODE)"
+
 "$BT/aapt2" compile --dir res -o build/res.zip
 "$BT/aapt2" link -o build/unsigned.apk -I "$JAR" --manifest AndroidManifest.xml \
     -A assets --java build/gen --min-sdk-version 24 --target-sdk-version 34 \
-    --version-code "${VERSION_CODE:-27}" --version-name "${VERSION_NAME:-2.1.17}" build/res.zip
+    --version-code "$VERSION_CODE" --version-name "$VERSION_NAME" build/res.zip
 
 javac -encoding UTF-8 --release 11 -classpath "$JAR" \
     -d build/classes $(find src build/gen -name '*.java')

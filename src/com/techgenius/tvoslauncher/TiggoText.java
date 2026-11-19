@@ -1,0 +1,245 @@
+package com.techgenius.tvoslauncher;
+
+import android.content.Context;
+
+import java.util.HashMap;
+import java.util.Map;
+
+/**
+ * Texts of the TIGGO 9 screens. The Russian text is the key (the car build speaks Russian by
+ * default); other launcher languages get the English text, or the base dictionary's translation of
+ * it when the launcher already has one. Unknown strings are returned unchanged, so t() is safe to
+ * call on names that are already translated or come from apps.
+ */
+final class TiggoText {
+    private static final Map<String, String> EN = new HashMap<>();
+    private static Context app;
+
+    private TiggoText() {
+    }
+
+    /** Remembers the application context (called from the activities' onCreate). */
+    static void init(Context c) {
+        if (c != null) app = c.getApplicationContext();
+    }
+
+    static String t(String ru) {
+        if (ru == null || ru.isEmpty() || app == null) return ru;
+        String lang = I18n.getLang(app);
+        if (I18n.LANG_RU.equals(lang)) return ru;
+        String en = EN.get(ru);
+        if (en == null) return ru;
+        if (I18n.LANG_EN.equals(lang)) return en;
+        String other = I18n.t(app, en);
+        return other != null && !other.isEmpty() ? other : en;
+    }
+
+    static {
+        EN.put(" (По умолчанию)", " (Default)");
+        EN.put(" · Закат ", " · Sunset ");
+        EN.put(" ожидается в ", " expected at ");
+        EN.put("% ширины экрана", "% of screen width");
+        EN.put("100% (По умолчанию)", "100% (Default)");
+        EN.put(": добавлено на главный экран", ": added to the home screen");
+        EN.put(": приложение не найдено, выберите его", ": app not found, choose one");
+        EN.put("Fluid или другой установленный пак", "Fluid or another installed pack");
+        EN.put("Аврора", "Aurora");
+        EN.put("Авто", "Auto");
+        EN.put("Авто (Fluid, если установлен)", "Auto (Fluid, if installed)");
+        EN.put("Авто (по солнцу)", "Auto (by the sun)");
+        EN.put("Авто по сезону и времени суток, фото, градиенты, своё изображение", "Auto by season and time of day, photos, gradients, your own picture");
+        EN.put("Авто: сезон и время суток", "Auto: season and time of day");
+        EN.put("Автоматически", "Automatic");
+        EN.put("Автомобиль", "Car");
+        EN.put("Автоопределение", "Auto-detect");
+        EN.put("Автоопределение по местоположению или свой город", "Detect by location or choose your city");
+        EN.put("Без доступа к местоположению город определяется по интернету", "Without location access the city is detected from the internet connection");
+        EN.put("Большой", "Large");
+        EN.put("Будет использован пак Fluid", "The Fluid pack will be used");
+        EN.put("Введите город", "Enter a city");
+        EN.put("Весна", "Spring");
+        EN.put("Видео не найдено. Настройки → О лаунчере → выбрать видео", "Video not found. Settings → About → choose a video");
+        EN.put("Виджеты", "Widgets");
+        EN.put("Вкл", "On");
+        EN.put("Включить окна свободной формы (Android)", "Enable freeform windows (Android)");
+        EN.put("Включён", "On");
+        EN.put("Восемь приложений в доке", "Eight apps in the dock");
+        EN.put("Воспроизвести промо-ролик", "Play the promo video");
+        EN.put("Восход ", "Sunrise ");
+        EN.put("Все настройки Android", "All Android settings");
+        EN.put("Все приложения", "All apps");
+        EN.put("Выберите изображение для главного экрана", "Choose a picture for the home screen");
+        EN.put("Выберите, какое приложение заменить", "Choose which app to replace");
+        EN.put("Выбирается автоматически", "Chosen automatically");
+        EN.put("Выбор видео недоступен на этом устройстве", "Choosing a video is not available on this device");
+        EN.put("Выбор фото недоступен на этом устройстве", "Choosing a photo is not available on this device");
+        EN.put("Выбрать видео для ролика (MP4)", "Choose the promo video (MP4)");
+        EN.put("Выбрать город", "Choose a city");
+        EN.put("Выбрать приложение", "Choose an app");
+        EN.put("Выкл", "Off");
+        EN.put("Выключен", "Off");
+        EN.put("Главная", "Home");
+        EN.put("Город и автоопределение", "City and auto-detect");
+        EN.put("Город: ", "City: ");
+        EN.put("Готово", "Done");
+        EN.put("Градиент меню", "Menu gradient");
+        EN.put("Графит", "Graphite");
+        EN.put("Графитовый", "Graphite");
+        EN.put("Гроза", "Thunderstorm");
+        EN.put("Дата и время", "Date and time");
+        EN.put("Два блока", "Two blocks");
+        EN.put("День", "Day");
+        EN.put("Добавить на главный экран", "Add to the home screen");
+        EN.put("Дождь", "Rain");
+        EN.put("Долгое нажатие на логотип TIGGO 9 на главном экране запускает ролик.", "Long-press the TIGGO 9 logo on the home screen to play the video.");
+        EN.put("Домой", "Home");
+        EN.put("Закат", "Sunset");
+        EN.put("Заменить «", "Replace «");
+        EN.put("Заменить другим приложением", "Replace with another app");
+        EN.put("Заменить приложение", "Replace app");
+        EN.put("Звук", "Sound");
+        EN.put("Зелёный", "Green");
+        EN.put("Зима", "Winter");
+        EN.put("Из галереи", "From gallery");
+        EN.put("Иконки приложений", "App icons");
+        EN.put("Иконки применяются…", "Applying icons…");
+        EN.put("Источник: ", "Source: ");
+        EN.put("Какое приложение заменить?", "Which app to replace?");
+        EN.put("Классический", "Classic");
+        EN.put("Компактная", "Compact");
+        EN.put("Компактный", "Compact");
+        EN.put("Крупнее иконки: в колонке помещается меньше приложений", "Bigger icons: fewer apps fit in the column");
+        EN.put("Крупный", "Large");
+        EN.put("Лето", "Summer");
+        EN.put("Маленький", "Small");
+        EN.put("Мельче иконки: в колонке помещается больше приложений", "Smaller icons: more apps fit in the column");
+        EN.put("Минимальная", "Minimal");
+        EN.put("Моё местоположение", "My location");
+        EN.put("Музыка", "Music");
+        EN.put("Музыка, видео и навигация", "Music, video and navigation");
+        EN.put("Музыка: приложение не найдено, выберите его", "Music: app not found, choose one");
+        EN.put("Музыкальное приложение", "Music app");
+        EN.put("Навигатор", "Navigator");
+        EN.put("Навигация", "Navigation");
+        EN.put("Нажмите Play, чтобы начать", "Press Play to start");
+        EN.put("Назад", "Back");
+        EN.put("Найти", "Find");
+        EN.put("Настроить главный экран", "Customize the home screen");
+        EN.put("Настройки", "Settings");
+        EN.put("Настройки звука Android", "Android sound settings");
+        EN.put("Настройки недоступны", "Settings are not available");
+        EN.put("Настройки экрана Android", "Android display settings");
+        EN.put("Не удалось воспроизвести видео", "Could not play the video");
+        EN.put("Не удалось открыть изображение", "Could not open the picture");
+        EN.put("Не удалось сохранить видео", "Could not save the video");
+        EN.put("Нет подключения", "Not connected");
+        EN.put("Нет сети или город не найден", "No network or city not found");
+        EN.put("Нижняя панель", "Bottom dock");
+        EN.put("Ничего не найдено", "Nothing found");
+        EN.put("Ночь", "Night");
+        EN.put("Нужен доступ к уведомлениям — нажмите", "Notification access needed — tap");
+        EN.put("Нужно разрешение", "Permission needed");
+        EN.put("О лаунчере", "About");
+        EN.put("Обои", "Wallpaper");
+        EN.put("Обои изменены", "Wallpaper changed");
+        EN.put("Обычный размер иконок на рабочем столе", "Normal icon size on the home screen");
+        EN.put("Океан", "Ocean");
+        EN.put("Оконный режим", "Window mode");
+        EN.put("Оконный режим не включён в Android: Настройки → Система → Окна свободной формы", "Window mode is off in Android: Settings → System → Freeform windows");
+        EN.put("Определять автоматически", "Detect automatically");
+        EN.put("Опустить ниже", "Move down");
+        EN.put("Оригинальные", "Original");
+        EN.put("Осадков в ближайшие часы не ожидается", "No precipitation expected in the next hours");
+        EN.put("Осень", "Autumn");
+        EN.put("Открывать приложения в окне", "Open apps in a window");
+        EN.put("Открыть", "Open");
+        EN.put("Открыть в окне", "Open in a window");
+        EN.put("Открыть настройки Bluetooth", "Open Bluetooth settings");
+        EN.put("Открыть настройки Wi-Fi", "Open Wi-Fi settings");
+        EN.put("Открыть параметры разработчика", "Open developer options");
+        EN.put("Оформление сброшено", "Appearance reset");
+        EN.put("Пак Fluid не установлен: установите его APK", "The Fluid pack is not installed: install its APK");
+        EN.put("Пак иконок", "Icon pack");
+        EN.put("Переместить, изменить размер", "Move, resize");
+        EN.put("Персонализация", "Personalization");
+        EN.put("По местоположению автомобиля (GPS и сеть)", "By the car's location (GPS and network)");
+        EN.put("По умолчанию", "Default");
+        EN.put("Погода", "Weather");
+        EN.put("Погода отключена в настройках лаунчера", "Weather is turned off in the launcher settings");
+        EN.put("Погода: автоопределение города", "Weather: city auto-detect");
+        EN.put("Подключено", "Connected");
+        EN.put("Поднять выше", "Move up");
+        EN.put("Подходящее приложение не найдено", "No suitable app found");
+        EN.put("Поиск", "Search");
+        EN.put("Поиск…", "Searching…");
+        EN.put("Показано: ", "Shown: ");
+        EN.put("Показать все", "All shown");
+        EN.put("Показать или скрыть приложения", "Show or hide apps");
+        EN.put("Полночь", "Midnight");
+        EN.put("Полярная ночь", "Polar night");
+        EN.put("Полярный день", "Polar day");
+        EN.put("Порядок и размер виджетов меняются удержанием виджета на главном экране.", "Long-press a widget on the home screen to change its order and size.");
+        EN.put("Построить маршрут", "Plan a route");
+        EN.put("Приложение", "App");
+        EN.put("Приложение для «", "App for «");
+        EN.put("Приложения", "Apps");
+        EN.put("Природа", "Nature");
+        EN.put("Размер дока", "Dock size");
+        EN.put("Размер иконок", "Icon size");
+        EN.put("Размер иконок: ", "Icon size: ");
+        EN.put("Размер окна", "Window size");
+        EN.put("Размер: ", "Size: ");
+        EN.put("Разрешить изменение яркости", "Allow brightness changes");
+        EN.put("Рассвет", "Dawn");
+        EN.put("Ролик сохранён: удерживайте логотип на главном экране", "Video saved: long-press the logo on the home screen");
+        EN.put("Сбросить на значение по умолчанию", "Reset to default");
+        EN.put("Сбросить оформление", "Reset appearance");
+        EN.put("Сбросить порядок и размеры", "Reset order and sizes");
+        EN.put("Своё фото", "Own photo");
+        EN.put("Сдвинуть влево", "Move left");
+        EN.put("Сдвинуть вправо", "Move right");
+        EN.put("Сейчас", "Now");
+        EN.put("Сейчас: ", "Now: ");
+        EN.put("Синий", "Blue");
+        EN.put("Система", "System");
+        EN.put("Системные", "System");
+        EN.put("Системные иконки", "System icons");
+        EN.put("Слот ", "Slot ");
+        EN.put("Слушать музыку", "Listen to music");
+        EN.put("Снег", "Snow");
+        EN.put("Состояние неизвестно", "Status unknown");
+        EN.put("Средний", "Medium");
+        EN.put("Стеклянная подложка под иконками: ", "Glass backing under icons: ");
+        EN.put("Стеклянный", "Glass");
+        EN.put("Стиль иконок", "Icon style");
+        EN.put("Стиль погоды", "Weather style");
+        EN.put("Стиль часов", "Clock style");
+        EN.put("Стильная", "Stylish");
+        EN.put("Телефон", "Phone");
+        EN.put("Темы оформления", "Themes");
+        EN.put("Только оригинальные иконки без подложки", "Only the original icons, no backing");
+        EN.put("Тёмная", "Dark");
+        EN.put("Убрать с главного экрана", "Remove from the home screen");
+        EN.put("Уведомления", "Notifications");
+        EN.put("Удерживайте виджет, чтобы переместить или изменить размер", "Long-press a widget to move or resize it");
+        EN.put("Удерживайте — выбрать город", "Long-press to choose a city");
+        EN.put("Удерживайте — настройки", "Long-press for settings");
+        EN.put("Управление приложениями Android", "Manage Android apps");
+        EN.put("Файлы", "Files");
+        EN.put("Фиолетовый", "Purple");
+        EN.put("Фото 1", "Photo 1");
+        EN.put("Фото 2", "Photo 2");
+        EN.put("Фото 3", "Photo 3");
+        EN.put("Фото 4", "Photo 4");
+        EN.put("Фото 5", "Photo 5");
+        EN.put("Цветовая схема", "Colour scheme");
+        EN.put("Чтобы приложения открывались в окне, которое можно двигать пальцем, в параметрах разработчика включите «Окна свободной формы» и «Изменение размера в многооконном режиме», затем перезагрузите магнитолу. Либо по ADB: settings put global enable_freeform_support 1 и settings put global force_resizable_activities 1.", "To open apps in a window you can move with a finger, turn on “Freeform windows” and “Force activities to be resizable” in the developer options, then restart the head unit. Or over ADB: settings put global enable_freeform_support 1 and settings put global force_resizable_activities 1.");
+        EN.put("Экран в экране", "Picture in picture");
+        EN.put("Экран и яркость", "Display and brightness");
+        EN.put("Язык и погода лаунчера", "Launcher language and weather");
+        EN.put("Яркая", "Bright");
+        EN.put("Яркость экрана", "Screen brightness");
+        EN.put("вкл", "on");
+        EN.put("выкл", "off");
+    }
+}

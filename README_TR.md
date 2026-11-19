@@ -1,7 +1,7 @@
-# tvOS Launcher (`v2.1.5`)
+# tvOS Launcher (`v3.0.0`)
 
 > 🇬🇧 **For English documentation and setup guide:** **[README.md (English)](README.md)**  
-> 📦 **En Son APK İndir (`v2.1.5`):** **[GitHub Releases](https://github.com/techgenius1/tvOS-Launcher/releases/latest)**
+> 📦 **En Son APK İndir (`v3.0.0`):** **[GitHub Releases](https://github.com/gyurdzhyan8631-netizen/tvOS-Launcher/releases/latest)**
 
 ![tvOS Launcher Afiş](screenshots_tr/Header_TR.jpg)
 
