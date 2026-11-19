@@ -51,6 +51,9 @@ public class TiggoSettingsActivity extends Activity {
     private static final String[] SECTIONS = {
             "Главная", "Wi-Fi", "Bluetooth", "Экран и яркость", "Звук",
             "Персонализация", "Приложения", "Система", "О лаунчере"};
+    private static final int[] SECTION_COLORS = {
+            0xFF30D158, 0xFF0A84FF, 0xFF0A84FF, 0xFF0A84FF, 0xFFFF375F,
+            0xFF5E5CE6, 0xFFBF5AF2, 0xFF8E8E93, 0xFF8E8E93};
     private static final String[] WALL_PRESETS = {
             "auto", "photo:tiggo9_autumn.jpg", "photo:tiggo9_winter.jpg", "photo:tiggo9_spring.jpg",
             "photo:tiggo9_summer.jpg", "photo:tiggo9_night.jpg", "photo:tiggo9-car.jpg"};
@@ -135,12 +138,68 @@ public class TiggoSettingsActivity extends Activity {
         return new LinearLayout.LayoutParams(w, h);
     }
 
-    private GradientDrawable glass(int radiusPx, int fill) {
-        GradientDrawable d = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{0x33FFFFFF | (fill & 0x00FFFFFF), fill});
-        d.setCornerRadius(radiusPx);
-        d.setStroke(Math.max(1, m(2)), 0x44FFFFFF);
-        return d;
+    /** iOS grouped-list glass: the blurred home wallpaper behind, a dark tint and a thin light rim. */
+    private android.graphics.drawable.Drawable glass(int radiusPx, int fill) {
+        int a = Math.min(0x8C, Math.max(0x40, Color.alpha(fill)));
+        return new TiggoGlass(radiusPx, (a << 24) | 0x2C2C2E, Math.max(1f, k * 1.6f), true).rim(0.7f);
+    }
+
+    /** iOS system colours for the rounded-square setting icons. */
+    static final int IOS_BLUE = 0xFF0A84FF, IOS_GREEN = 0xFF30D158, IOS_RED = 0xFFFF375F,
+            IOS_ORANGE = 0xFFFF9F0A, IOS_INDIGO = 0xFF5E5CE6, IOS_PURPLE = 0xFFBF5AF2,
+            IOS_TEAL = 0xFF40C8E0, IOS_GRAY = 0xFF8E8E93, IOS_PINK = 0xFFFF2D55, IOS_YELLOW = 0xFFFFCC00;
+
+    private static int iconColorFor(String title) {
+        String t = title == null ? "" : title.toLowerCase(java.util.Locale.ROOT);
+        String[][] map = {
+                {"wi-fi", "wifi", "сеть", "network"}, {"bluetooth"},
+                {"ярк", "экран", "display", "bright"}, {"звук", "громк", "sound", "volume"},
+                {"обои", "wallpaper"}, {"икон", "icon"}, {"док", "dock"},
+                {"музык", "music"}, {"навиг", "nav"}, {"час", "clock"}, {"погод", "weather"},
+                {"виджет", "widget"}, {"градиент", "акцент", "цвет", "gradient", "accent", "colour", "color"},
+                {"приложен", "apps", "app"}, {"окн", "window", "freeform"}, {"обнов", "update"},
+                {"верси", "version", "о лаунч", "about"}, {"главн", "home"}};
+        int[] colors = {IOS_BLUE, IOS_BLUE, IOS_BLUE, IOS_RED, IOS_TEAL, IOS_INDIGO, IOS_GRAY,
+                IOS_PINK, IOS_GREEN, IOS_ORANGE, IOS_TEAL, IOS_INDIGO, IOS_PURPLE,
+                IOS_PURPLE, IOS_INDIGO, IOS_GREEN, IOS_GRAY, IOS_GREEN};
+        for (int i = 0; i < map.length; i++) for (String w : map[i]) if (t.contains(w)) return colors[i];
+        return IOS_GRAY;
+    }
+
+    /** White glyph inside an iOS rounded square of the given colour. */
+    private View iosIcon(Bitmap b, int color, int size) {
+        FrameLayout f = new FrameLayout(this);
+        GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                new int[]{TiggoTheme.mix(color, 0xFFFFFFFF, 0.12f), color});
+        g.setCornerRadius(size * 0.26f);
+        f.setBackground(g);
+        ImageView iv = icon(b);
+        iv.setColorFilter(Color.WHITE, android.graphics.PorterDuff.Mode.SRC_IN);
+        int pad = Math.round(size * 0.17f);
+        iv.setPadding(pad, pad, pad, pad);
+        f.addView(iv, match());
+        return f;
+    }
+
+    /** iOS switch: green when on, a white knob that slides. */
+    private View iosSwitch(boolean on) {
+        FrameLayout sw = new FrameLayout(this);
+        GradientDrawable track = new GradientDrawable();
+        track.setCornerRadius(m(20));
+        track.setColor(on ? IOS_GREEN : 0x5278788C);
+        sw.setBackground(track);
+        View knob = new View(this);
+        GradientDrawable kg = new GradientDrawable();
+        kg.setShape(GradientDrawable.OVAL);
+        kg.setColor(Color.WHITE);
+        knob.setBackground(kg);
+        knob.setElevation(m(3));
+        FrameLayout.LayoutParams kl = new FrameLayout.LayoutParams(m(34), m(34),
+                Gravity.CENTER_VERTICAL | (on ? Gravity.END : Gravity.START));
+        kl.leftMargin = m(3);
+        kl.rightMargin = m(3);
+        sw.addView(knob, kl);
+        return sw;
     }
 
     private GradientDrawable mask(int radiusPx) {
@@ -151,6 +210,10 @@ public class TiggoSettingsActivity extends Activity {
     }
 
     private RippleDrawable pressable(int radiusPx, int fill) {
+        if (fill == 0x33FFFFFF || fill == 0x44FFFFFF) {
+            return new RippleDrawable(ColorStateList.valueOf(0x55FFFFFF),
+                    new TiggoGlass(radiusPx, 0x33FFFFFF, Math.max(1f, k * 1.6f), true).rim(0.7f), mask(radiusPx));
+        }
         return new RippleDrawable(ColorStateList.valueOf(0x55FFFFFF), glass(radiusPx, fill), mask(radiusPx));
     }
 
@@ -210,10 +273,17 @@ public class TiggoSettingsActivity extends Activity {
         bg.setScaleType(ImageView.ScaleType.CENTER_CROP);
         bg.setBackgroundColor(0xFF0A1022);
         rootView.addView(bg, match());
-        loadBackdrop(bg);
         View shade = new View(this);
-        shade.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
-                new int[]{TiggoTheme.withAlpha(grad[0], 0xC8), TiggoTheme.withAlpha(grad[1], 0xEE)}));
+        if (TiggoGlass.heavy != null) {
+            // the blurred home wallpaper, darkened: iPadOS Settings over the Lock Screen colours
+            bg.setImageBitmap(TiggoGlass.heavy);
+            shade.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                    new int[]{0x66000000, 0x99000000}));
+        } else {
+            loadBackdrop(bg);
+            shade.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                    new int[]{TiggoTheme.withAlpha(grad[0], 0xC8), TiggoTheme.withAlpha(grad[1], 0xEE)}));
+        }
         rootView.addView(shade, match());
 
         buildHeader();
@@ -273,7 +343,8 @@ public class TiggoSettingsActivity extends Activity {
         back.setOnClickListener(v -> goBack());
         rootView.addView(back, pos(m(84), m(66), m(392), m(24)));
 
-        titleView = text("", 46, true);
+        titleView = text("", 50, true);
+        titleView.setTypeface(Ui.font(this, "display"));
         rootView.addView(titleView, pos(ViewGroup.LayoutParams.WRAP_CONTENT, m(66), m(504), m(24)));
 
         LinearLayout right = new LinearLayout(this);
@@ -318,10 +389,9 @@ public class TiggoSettingsActivity extends Activity {
         side.setBackground(glass(m(46), TiggoTheme.barFill(this)));
 
         highlight = new View(this);
-        int ac = accent();
-        GradientDrawable hl = new GradientDrawable(GradientDrawable.Orientation.LEFT_RIGHT,
-                new int[]{TiggoTheme.mix(ac, 0xFF000000, 0.25f), ac});
-        hl.setCornerRadius(m(33));
+        GradientDrawable hl = new GradientDrawable();
+        hl.setColor(IOS_BLUE);  // iPadOS: the selected section is a solid system-blue pill
+        hl.setCornerRadius(m(22));
         highlight.setBackground(hl);
         FrameLayout.LayoutParams hlp = new FrameLayout.LayoutParams(m(346), m(66));
         hlp.leftMargin = m(13);
@@ -333,8 +403,8 @@ public class TiggoSettingsActivity extends Activity {
             FrameLayout row = new FrameLayout(this);
             row.setBackground(rippleOnly(m(33)));
             FrameLayout.LayoutParams il = new FrameLayout.LayoutParams(m(50), m(50), Gravity.START | Gravity.CENTER_VERTICAL);
-            il.leftMargin = m(26);
-            row.addView(icon(sectionIcon(i, m(46))), il);
+            il.leftMargin = m(22);
+            row.addView(iosIcon(sectionIcon(i, m(46)), SECTION_COLORS[i], m(50)), il);
             TextView label = text(TiggoText.t(SECTIONS[i]), 27, i == section);
             label.setMaxLines(2);
             FrameLayout.LayoutParams ll = new FrameLayout.LayoutParams(
@@ -415,7 +485,7 @@ public class TiggoSettingsActivity extends Activity {
     private LinearLayout card() {
         LinearLayout c = new LinearLayout(this);
         c.setOrientation(LinearLayout.VERTICAL);
-        c.setBackground(glass(m(34), cardFill()));
+        c.setBackground(glass(m(28), cardFill()));
         return c;
     }
 
@@ -430,23 +500,27 @@ public class TiggoSettingsActivity extends Activity {
         row.setOrientation(LinearLayout.HORIZONTAL);
         row.setGravity(Gravity.CENTER_VERTICAL);
         row.setPadding(m(30), 0, m(26), 0);
-        row.setMinimumHeight(m(90));
-        row.setBackground(rippleOnly(m(30)));
-        if (ic != null) row.addView(icon(ic), lp(m(52), m(52)));
+        row.setMinimumHeight(m(86));
+        row.setBackground(rippleOnly(m(26)));
+        if (ic != null) row.addView(iosIcon(ic, iconColorFor(title), m(50)), lp(m(50), m(50)));
         TextView t = text(title, 28, false);
         LinearLayout.LayoutParams tl = lp(0, ViewGroup.LayoutParams.WRAP_CONTENT);
         tl.weight = 1f;
         tl.leftMargin = ic != null ? m(26) : 0;
         row.addView(t, tl);
-        if (value != null) {
+        boolean isOn = value != null && value.equals(TiggoText.t("Вкл"));
+        boolean isOff = value != null && value.equals(TiggoText.t("Выкл"));
+        if (isOn || isOff) {
+            row.addView(iosSwitch(isOn), lp(m(80), m(40)));  // on / off reads as an iOS switch
+        } else if (value != null) {
             TextView v = text(value, 26, false);
-            v.setAlpha(0.8f);
+            v.setTextColor(0x99EBEBF5);
             row.addView(v, lp(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         }
-        if (chevron) {
-            LinearLayout.LayoutParams cl = lp(m(36), m(36));
-            cl.leftMargin = m(16);
-            row.addView(icon(TiggoIcons.chevron(m(34), 0xCCFFFFFF)), cl);
+        if (chevron && !isOn && !isOff) {
+            LinearLayout.LayoutParams cl = lp(m(30), m(30));
+            cl.leftMargin = m(14);
+            row.addView(icon(TiggoIcons.chevron(m(28), 0x66EBEBF5)), cl);
         }
         if (click != null) row.setOnClickListener(click);
         return row;
@@ -454,9 +528,9 @@ public class TiggoSettingsActivity extends Activity {
 
     private View rowDivider() {
         View d = new View(this);
-        d.setBackgroundColor(0x22FFFFFF);
+        d.setBackgroundColor(0x2EEBEBF5);
         LinearLayout.LayoutParams l = lp(ViewGroup.LayoutParams.MATCH_PARENT, 1);
-        l.leftMargin = m(108);
+        l.leftMargin = m(106);
         l.rightMargin = m(24);
         d.setLayoutParams(l);
         return d;
@@ -537,7 +611,8 @@ public class TiggoSettingsActivity extends Activity {
         SeekBar sb = new SeekBar(this);
         sb.setMax(max);
         sb.setProgress(current);
-        sb.setProgressTintList(ColorStateList.valueOf(accent()));
+        sb.setProgressTintList(ColorStateList.valueOf(IOS_BLUE));
+        sb.setProgressBackgroundTintList(ColorStateList.valueOf(0x5278788C));
         sb.setThumbTintList(ColorStateList.valueOf(Color.WHITE));
         sb.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override public void onProgressChanged(SeekBar s, int p, boolean user) {
@@ -866,7 +941,7 @@ public class TiggoSettingsActivity extends Activity {
         FrameLayout f = new FrameLayout(this);
         GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.TL_BR, TiggoTheme.THEME_PREVIEW[i]);
         g.setCornerRadius(m(26));
-        g.setStroke(selected ? Math.max(2, m(4)) : Math.max(1, m(2)), selected ? accent() : 0x66FFFFFF);
+        g.setStroke(selected ? Math.max(2, m(4)) : Math.max(1, m(2)), selected ? IOS_BLUE : 0x40FFFFFF);
         f.setBackground(g);
         TextView t = text(TiggoText.t(TiggoTheme.THEME_NAMES[i]), 26, true);
         FrameLayout.LayoutParams tl = new FrameLayout.LayoutParams(
@@ -879,7 +954,7 @@ public class TiggoSettingsActivity extends Activity {
             check.setGravity(Gravity.CENTER);
             GradientDrawable cg = new GradientDrawable();
             cg.setShape(GradientDrawable.OVAL);
-            cg.setColor(accent());
+            cg.setColor(IOS_BLUE);
             check.setBackground(cg);
             FrameLayout.LayoutParams cl = new FrameLayout.LayoutParams(m(44), m(44), Gravity.BOTTOM | Gravity.END);
             cl.rightMargin = m(14);

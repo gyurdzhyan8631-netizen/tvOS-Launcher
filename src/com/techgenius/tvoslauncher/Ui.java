@@ -46,24 +46,33 @@ public final class Ui {
      */
     private static android.graphics.Typeface baseMedium;
 
-    private static android.graphics.Typeface baseFont(Context c) {
-        if (baseMedium == null) {
-            try {
-                baseMedium = android.graphics.Typeface.createFromAsset(c.getAssets(), "fonts/GoogleSans-Medium.ttf");
-            } catch (RuntimeException e) {
-                baseMedium = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL);
-            }
+    private static android.graphics.Typeface load(Context c, String file, String fallback, int style) {
+        try {
+            return android.graphics.Typeface.createFromAsset(c.getAssets(), "fonts/" + file);
+        } catch (RuntimeException e) {
+            return android.graphics.Typeface.create(fallback, style);
         }
+    }
+
+    private static android.graphics.Typeface baseFont(Context c) {
+        if (baseMedium == null) baseMedium = load(c, "Inter-Medium.ttf", "sans-serif-medium", 0);
         return baseMedium;
     }
 
-    /** Google Sans Medium (the car build's only font); bold-looking weights are synthesised from it. */
+    /** Inter (closest open font to Apple SF): regular, medium, semibold, and Inter Display bold for big titles. */
     public static android.graphics.Typeface font(Context c, String weight) {
         android.graphics.Typeface t = FONTS.get(weight);
         if (t == null) {
-            android.graphics.Typeface base = baseFont(c);
-            boolean bold = weight.equals("display") || weight.equals("semibold") || weight.equals("bold");
-            t = bold ? android.graphics.Typeface.create(base, android.graphics.Typeface.BOLD) : base;
+            baseFont(c);
+            switch (weight) {
+                case "regular": t = load(c, "Inter-Regular.ttf", "sans-serif", 0); break;
+                case "medium": t = baseMedium; break;
+                case "semibold": t = load(c, "Inter-SemiBold.ttf", "sans-serif-medium", 1); break;
+                case "display":
+                case "bold": t = load(c, "InterDisplay-Bold.ttf", "sans-serif", 1); break;
+                case "light": t = load(c, "Inter-Regular.ttf", "sans-serif-light", 0); break;
+                default: t = baseMedium; break;
+            }
             FONTS.put(weight, t);
         }
         return t;

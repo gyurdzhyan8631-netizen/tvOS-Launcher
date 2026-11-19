@@ -34,6 +34,11 @@
     <uses-permission android:name="android.permission.WRITE_SECURE_SETTINGS" />
     <uses-permission android:name="android.permission.SET_VOLUME_KEY_LONG_PRESS_LISTENER" />
     <uses-permission android:name="android.permission.DUMP" />
+    <!-- Control Center: Wi-Fi / Bluetooth switches and the screen brightness slider -->
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
+    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
 
     <queries>
         <intent>
@@ -141,6 +146,15 @@
             android:name=".SetupActivity"
             android:exported="true"
             android:launchMode="singleTop"
+            android:excludeFromRecents="true"
+            android:screenOrientation="landscape"
+            android:windowSoftInputMode="adjustNothing"
+            android:configChanges="keyboard|keyboardHidden|navigation|orientation|screenSize|smallestScreenSize|screenLayout|uiMode|density" />
+        <!-- TIGGO 9 settings (themes, wallpapers, widgets, dock). Was missing, so the gear opened
+             the old tvOS panel instead and none of the TIGGO options could be reached. -->
+        <activity
+            android:name=".TiggoSettingsActivity"
+            android:exported="false"
             android:excludeFromRecents="true"
             android:screenOrientation="landscape"
             android:windowSoftInputMode="adjustNothing"
