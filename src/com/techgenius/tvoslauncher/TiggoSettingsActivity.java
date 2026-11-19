@@ -881,16 +881,43 @@ public class TiggoSettingsActivity extends Activity {
                             return false;
                         })), true));
         list.addView(rowDivider());
-        list.addView(settingRow(Glyphs.get("cloud", m(52), Color.WHITE), TiggoText.t("Стиль погоды"),
-                TiggoText.t(TiggoTheme.WEATHER_NAMES[TiggoTheme.get(this, TiggoTheme.K_WEATHER, 0, 2)]),
-                v -> openSub(() -> pageChoice(TiggoText.t("Стиль погоды"), TiggoTheme.WEATHER_NAMES,
-                        TiggoTheme.get(this, TiggoTheme.K_WEATHER, 0, 2), i -> {
-                            TiggoTheme.put(this, TiggoTheme.K_WEATHER, i);
+        list.addView(settingRow(TiggoIcons.widgets(m(52), Color.WHITE), TiggoText.t("Виджеты главного экрана"),
+                TiggoText.t("Изменить"), v -> {
+                    TiggoTheme.prefs(this).edit().putBoolean("tiggo9_board_edit", true).apply();
+                    finish();
+                }, true));
+        list.addView(rowDivider());
+        final String[] onOff = {"Включено", "Выключено"};
+        list.addView(settingRow(TiggoIcons.sun(m(52), Color.WHITE), TiggoText.t("Живое небо"),
+                TiggoText.t(onOff[TiggoTheme.prefs(this).getBoolean("tiggo9_sky_on", true) ? 0 : 1]),
+                v -> openSub(() -> pageChoice(TiggoText.t("Живое небо"), onOff,
+                        TiggoTheme.prefs(this).getBoolean("tiggo9_sky_on", true) ? 0 : 1, i -> {
+                            TiggoTheme.prefs(this).edit().putBoolean("tiggo9_sky_on", i == 0).apply();
                             return false;
                         })), true));
         list.addView(rowDivider());
-        list.addView(settingRow(TiggoIcons.widgets(m(52), Color.WHITE), TiggoText.t("Виджеты"), visibleWidgetsLabel(),
-                v -> openSub(this::pageWidgets), true));
+        list.addView(settingRow(Glyphs.get("cloud", m(52), Color.WHITE), TiggoText.t("Анимация неба"),
+                TiggoText.t(onOff[TiggoTheme.prefs(this).getBoolean("tiggo9_sky_anim", true) ? 0 : 1]),
+                v -> openSub(() -> pageChoice(TiggoText.t("Анимация неба"), onOff,
+                        TiggoTheme.prefs(this).getBoolean("tiggo9_sky_anim", true) ? 0 : 1, i -> {
+                            TiggoTheme.prefs(this).edit().putBoolean("tiggo9_sky_anim", i == 0).apply();
+                            return false;
+                        })), true));
+        list.addView(rowDivider());
+        final String[] starts = {"Живое небо", "Виджеты", "Последний открытый"};
+        list.addView(settingRow(TiggoIcons.apps4(m(52), Color.WHITE), TiggoText.t("Экран при запуске"),
+                TiggoText.t(starts[Math.max(0, Math.min(2, TiggoTheme.prefs(this).getInt("tiggo9_start_page", 0)))]),
+                v -> openSub(() -> pageChoice(TiggoText.t("Экран при запуске"), starts,
+                        Math.max(0, Math.min(2, TiggoTheme.prefs(this).getInt("tiggo9_start_page", 0))), i -> {
+                            TiggoTheme.prefs(this).edit().putInt("tiggo9_start_page", i).apply();
+                            return false;
+                        })), true));
+        list.addView(rowDivider());
+        list.addView(settingRow(TiggoIcons.widgets(m(52), Color.WHITE), TiggoText.t("Сбросить виджеты"),
+                TiggoText.t("Как было"), v -> {
+                    TiggoTheme.prefs(this).edit().remove("tiggo9_board").apply();
+                    android.widget.Toast.makeText(this, TiggoText.t("Виджеты сброшены"), android.widget.Toast.LENGTH_SHORT).show();
+                }, true));
         list.addView(rowDivider());
         list.addView(settingRow(TiggoIcons.palette(m(52), Color.WHITE), TiggoText.t("Градиент меню"),
                 TiggoText.t(TiggoTheme.MENU_NAMES[TiggoTheme.get(this, TiggoTheme.K_MENU, 0, 3)]),

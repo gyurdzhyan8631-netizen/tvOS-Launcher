@@ -193,6 +193,8 @@ final class TiggoTheme {
                 + p.getBoolean(K_WIDGET_OFF + "music", false) + "|"
                 + p.getBoolean(K_TILE_GLASS, true) + "|" + p.getString(K_ICON_PACK, "auto") + "|"
                 + Scenes.getDockScalePercent(c) + "|" + Scenes.getIconScalePercent(c) + "|"
-                + p.getString("tiggo9_wapp_pkg_music", "") + p.getString("tiggo9_wapp_pkg_nav", "");
+                + p.getString("tiggo9_wapp_pkg_music", "") + p.getString("tiggo9_wapp_pkg_nav", "") + "|"
+                + p.getBoolean("tiggo9_sky_on", true) + p.getBoolean("tiggo9_sky_anim", true)
+                + p.getInt("tiggo9_start_page", 0) + "|" + p.getString("tiggo9_board", "");
     }
 }

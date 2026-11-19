@@ -148,6 +148,11 @@ final class TiggoGlass extends Drawable {
      * shared blurred backdrop. Cheap: about 1/7 of the screen, box-blurred in a few passes.
      */
     static void capture(ViewGroup home, int count) {
+        capture(home, count, null);
+    }
+
+    /** Same as {@link #capture(ViewGroup, int)}, and also paints {@code extra} where it sits on screen. */
+    static void capture(ViewGroup home, int count, View extra) {
         try {
             int w = home.getWidth();
             int h = home.getHeight();
@@ -167,6 +172,16 @@ final class TiggoGlass extends Drawable {
                 c.translate(child.getLeft(), child.getTop());
                 c.concat(child.getMatrix());
                 child.draw(c);
+                c.restoreToCount(save);
+            }
+            if (extra != null && extra.getWidth() > 0 && extra.isShown()) {
+                int[] a = new int[2];
+                int[] b = new int[2];
+                home.getLocationInWindow(a);
+                extra.getLocationInWindow(b);
+                int save = c.save();
+                c.translate(b[0] - a[0], b[1] - a[1]);
+                extra.draw(c);
                 c.restoreToCount(save);
             }
             int bw = Math.max(16, w / 7);
