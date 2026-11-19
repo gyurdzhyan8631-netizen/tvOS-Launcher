@@ -541,4 +541,86 @@ final class TiggoIcons {
         c.drawRoundRect(new RectF(s * 0.54f, s * 0.60f, s * 0.88f, s * 0.86f), s * 0.08f, s * 0.08f, p);
         return b;
     }
+
+    /** Restart the track (circular arrow). */
+    static Bitmap replay(int s, int color) {
+        Bitmap b = bmp(s);
+        Canvas c = new Canvas(b);
+        Paint st = stroke(color, s * 0.085f);
+        c.drawArc(new RectF(s * 0.20f, s * 0.22f, s * 0.80f, s * 0.82f), -70, -290, false, st);
+        Path head = new Path();
+        head.moveTo(s * 0.50f, s * 0.04f);
+        head.lineTo(s * 0.50f, s * 0.40f);
+        head.lineTo(s * 0.24f, s * 0.22f);
+        head.close();
+        c.drawPath(head, fill(color));
+        return b;
+    }
+
+    static Bitmap skipPrev(int s, int color) {
+        Bitmap b = bmp(s);
+        Canvas c = new Canvas(b);
+        Paint p = fill(color);
+        c.drawRoundRect(new RectF(s * 0.16f, s * 0.22f, s * 0.28f, s * 0.78f), s * 0.03f, s * 0.03f, p);
+        Path t = new Path();
+        t.moveTo(s * 0.84f, s * 0.20f);
+        t.lineTo(s * 0.84f, s * 0.80f);
+        t.lineTo(s * 0.34f, s * 0.50f);
+        t.close();
+        Paint tp = fill(color);
+        tp.setStyle(Paint.Style.FILL_AND_STROKE);
+        tp.setStrokeJoin(Paint.Join.ROUND);
+        tp.setStrokeWidth(s * 0.05f);
+        c.drawPath(t, tp);
+        return b;
+    }
+
+    static Bitmap skipNext(int s, int color) {
+        Bitmap b = bmp(s);
+        Canvas c = new Canvas(b);
+        Paint p = fill(color);
+        c.drawRoundRect(new RectF(s * 0.72f, s * 0.22f, s * 0.84f, s * 0.78f), s * 0.03f, s * 0.03f, p);
+        Path t = new Path();
+        t.moveTo(s * 0.16f, s * 0.20f);
+        t.lineTo(s * 0.16f, s * 0.80f);
+        t.lineTo(s * 0.66f, s * 0.50f);
+        t.close();
+        Paint tp = fill(color);
+        tp.setStyle(Paint.Style.FILL_AND_STROKE);
+        tp.setStrokeJoin(Paint.Join.ROUND);
+        tp.setStrokeWidth(s * 0.05f);
+        c.drawPath(t, tp);
+        return b;
+    }
+
+    static Bitmap pause(int s, int color) {
+        Bitmap b = bmp(s);
+        Canvas c = new Canvas(b);
+        Paint p = fill(color);
+        c.drawRoundRect(new RectF(s * 0.26f, s * 0.20f, s * 0.43f, s * 0.80f), s * 0.05f, s * 0.05f, p);
+        c.drawRoundRect(new RectF(s * 0.57f, s * 0.20f, s * 0.74f, s * 0.80f), s * 0.05f, s * 0.05f, p);
+        return b;
+    }
+
+    /** Box with an arrow pointing up (open the app). */
+    static Bitmap shareUp(int s, int color) {
+        Bitmap b = bmp(s);
+        Canvas c = new Canvas(b);
+        Paint st = stroke(color, s * 0.08f);
+        Path box = new Path();
+        box.moveTo(s * 0.34f, s * 0.42f);
+        box.lineTo(s * 0.20f, s * 0.42f);
+        box.lineTo(s * 0.20f, s * 0.86f);
+        box.lineTo(s * 0.80f, s * 0.86f);
+        box.lineTo(s * 0.80f, s * 0.42f);
+        box.lineTo(s * 0.66f, s * 0.42f);
+        c.drawPath(box, st);
+        c.drawLine(s * 0.5f, s * 0.12f, s * 0.5f, s * 0.60f, st);
+        Path ah = new Path();
+        ah.moveTo(s * 0.34f, s * 0.28f);
+        ah.lineTo(s * 0.5f, s * 0.12f);
+        ah.lineTo(s * 0.66f, s * 0.28f);
+        c.drawPath(ah, st);
+        return b;
+    }
 }

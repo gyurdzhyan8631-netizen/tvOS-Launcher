@@ -4,6 +4,10 @@ import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
+import android.graphics.Canvas;
+import android.graphics.drawable.Drawable;
 import android.content.res.ColorStateList;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -638,6 +642,18 @@ public class TiggoSettingsActivity extends Activity {
         c.addView(settingRow(TiggoIcons.clockFace(m(52), Color.WHITE), "Дата и время", null,
                 v -> openSystem(Settings.ACTION_DATE_SETTINGS), true));
         c.addView(rowDivider());
+        c.addView(settingRow(TiggoIcons.monitor(m(52), Color.WHITE), "Открывать приложения в окне",
+                prefs.getBoolean("tiggo9_window_mode", false) ? "Вкл" : "Выкл", v -> {
+                    prefs.edit().putBoolean("tiggo9_window_mode", !prefs.getBoolean("tiggo9_window_mode", false)).apply();
+                    rerun();
+                }, false));
+        c.addView(rowDivider());
+        c.addView(settingRow(null, "Размер окна", prefs.getInt("tiggo9_window_pct", 58) + "%",
+                v -> openSub(this::pageWindowSize), true));
+        c.addView(rowDivider());
+        c.addView(settingRow(null, "Включить окна свободной формы (Android)", null,
+                v -> openSub(this::pageFreeformHelp), true));
+        c.addView(rowDivider());
         c.addView(settingRow(null, "Все настройки Android", null,
                 v -> openSystem(Settings.ACTION_SETTINGS), true));
         addCard(col, c, 0);
@@ -758,6 +774,12 @@ public class TiggoSettingsActivity extends Activity {
         list.addView(rowDivider());
         list.addView(settingRow(TiggoIcons.apps4(m(52), Color.WHITE), "Размер дока", Scenes.dockScaleLabel(this),
                 v -> openSub(this::pageDockSize), true));
+        list.addView(rowDivider());
+        list.addView(settingRow(TiggoIcons.note(m(52), Color.WHITE), "Музыкальное приложение", widgetAppLabel("music"),
+                v -> openSub(() -> pageWidgetApp("music", "Музыкальное приложение")), true));
+        list.addView(rowDivider());
+        list.addView(settingRow(TiggoIcons.navigation(m(52), Color.WHITE), "Навигатор", widgetAppLabel("nav"),
+                v -> openSub(() -> pageWidgetApp("nav", "Навигатор")), true));
         list.addView(rowDivider());
         list.addView(settingRow(TiggoIcons.apps4(m(52), Color.WHITE), "Пак иконок", iconPackName(),
                 v -> openSub(this::pageIconPack), true));
@@ -911,6 +933,90 @@ public class TiggoSettingsActivity extends Activity {
     private void pageDockSize() {
         pagePercent("Размер дока", new int[]{50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150},
                 Scenes.getDockScalePercent(this), true);
+    }
+
+    private String widgetAppLabel(String id) {
+        String pkg = prefs.getString("tiggo9_wapp_pkg_" + id, null);
+        if (pkg == null) return "Авто";
+        try {
+            PackageManager pm = getPackageManager();
+            return pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)).toString();
+        } catch (Throwable t) {
+            return "Авто";
+        }
+    }
+
+    private Bitmap bitmapOf(Drawable d, int px) {
+        Bitmap b = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888);
+        Canvas c = new Canvas(b);
+        d.setBounds(0, 0, px, px);
+        d.draw(c);
+        return b;
+    }
+
+    /** Choose which app the music widget controls (or the navigation capsule opens). */
+    private void pageWidgetApp(final String id, String title) {
+        LinearLayout col = column();
+        LinearLayout c = card();
+        final String current = prefs.getString("tiggo9_wapp_pkg_" + id, null);
+        c.addView(settingRow(null, "Автоматически", current == null ? "✓" : null, v -> {
+            prefs.edit().remove("tiggo9_wapp_pkg_" + id).remove("tiggo9_wapp_" + id).apply();
+            goBack();
+        }, false));
+        PackageManager pm = getPackageManager();
+        List<ResolveInfo> apps = pm.queryIntentActivities(
+                new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LAUNCHER), 0);
+        java.util.Collections.sort(apps, (a, b) -> a.loadLabel(pm).toString()
+                .compareToIgnoreCase(b.loadLabel(pm).toString()));
+        for (ResolveInfo ri : apps) {
+            final String pkg = ri.activityInfo.packageName;
+            c.addView(rowDivider());
+            Bitmap ic;
+            try {
+                ic = bitmapOf(ri.loadIcon(pm), m(52));
+            } catch (Throwable t) {
+                ic = null;
+            }
+            c.addView(settingRow(ic, ri.loadLabel(pm).toString(), pkg.equals(current) ? "✓" : null, v -> {
+                prefs.edit().putString("tiggo9_wapp_pkg_" + id, pkg).remove("tiggo9_wapp_" + id).apply();
+                toast("Источник: " + widgetAppLabel(id));
+                goBack();
+            }, false));
+        }
+        addCard(col, c, 0);
+        showPage(title, col);
+    }
+
+    private void pageWindowSize() {
+        final int[] steps = {45, 50, 58, 65, 72, 80};
+        String[] labels = new String[steps.length];
+        int cur = 2;
+        int saved = prefs.getInt("tiggo9_window_pct", 58);
+        for (int i = 0; i < steps.length; i++) {
+            labels[i] = steps[i] + "% ширины экрана" + (steps[i] == 58 ? " (По умолчанию)" : "");
+            if (steps[i] == saved) cur = i;
+        }
+        pageChoice("Размер окна", labels, cur, i -> {
+            prefs.edit().putInt("tiggo9_window_pct", steps[i]).apply();
+            return false;
+        });
+    }
+
+    private void pageFreeformHelp() {
+        LinearLayout col = column();
+        LinearLayout c = card();
+        c.addView(settingRow(null, "Открыть параметры разработчика", null,
+                v -> openSystem(Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS), true));
+        addCard(col, c, 0);
+        TextView hint = text("Чтобы приложения открывались в окне, которое можно двигать пальцем, в параметрах "
+                + "разработчика включите «Окна свободной формы» и «Изменение размера в многооконном режиме», "
+                + "затем перезагрузите магнитолу. Либо по ADB: settings put global enable_freeform_support 1 и "
+                + "settings put global force_resizable_activities 1.", 24, false);
+        hint.setAlpha(0.8f);
+        hint.setGravity(Gravity.TOP);
+        hint.setPadding(m(8), m(26), m(8), 0);
+        col.addView(hint);
+        showPage("Оконный режим", col);
     }
 
     private void pageIconPack() {

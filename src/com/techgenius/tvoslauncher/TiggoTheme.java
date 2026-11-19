@@ -18,7 +18,7 @@ final class TiggoTheme {
 
     static final String[] THEME_NAMES = {"Стильная", "Тёмная", "Яркая", "Природа"};
     static final String[] CLOCK_NAMES = {"Классический", "Стеклянный", "Крупный", "Компактный"};
-    static final String[] WEATHER_NAMES = {"Карточка", "Компактная", "Минимальная"};
+    static final String[] WEATHER_NAMES = {"Два блока", "Компактная", "Минимальная"};
     static final String[] MENU_NAMES = {"Синий", "Фиолетовый", "Графитовый", "Зелёный"};
     static final int[] ACCENTS = {0xFF1C6BFF, 0xFF9B4DFF, 0xFFFF4D9D, 0xFFFF9F1A, 0xFF4CD35A};
     static final int[][] MENU_GRADS = {
@@ -99,6 +99,7 @@ final class TiggoTheme {
                 + p.getBoolean(K_WIDGET_OFF + "weather", false) + p.getBoolean(K_WIDGET_OFF + "nav", false)
                 + p.getBoolean(K_WIDGET_OFF + "music", false) + "|"
                 + p.getBoolean(K_TILE_GLASS, true) + "|" + p.getString(K_ICON_PACK, "auto") + "|"
-                + Scenes.getDockScalePercent(c) + "|" + Scenes.getIconScalePercent(c);
+                + Scenes.getDockScalePercent(c) + "|" + Scenes.getIconScalePercent(c) + "|"
+                + p.getString("tiggo9_wapp_pkg_music", "") + p.getString("tiggo9_wapp_pkg_nav", "");
     }
 }
