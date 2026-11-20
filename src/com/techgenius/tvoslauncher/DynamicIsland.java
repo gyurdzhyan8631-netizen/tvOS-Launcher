@@ -5,11 +5,15 @@ import android.app.Notification;
 import android.content.ComponentName;
 import android.content.Context;
 import android.graphics.Bitmap;
+import android.graphics.BitmapShader;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.LinearGradient;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Path;
 import android.graphics.RectF;
+import android.graphics.Shader;
 import android.graphics.Typeface;
 import android.media.MediaMetadata;
 import android.media.session.MediaController;
@@ -35,7 +39,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Dynamic Island: a black pill at the top of the second home screen.
+ * Dynamic Island: a frosted-glass pill at the top of the second home screen
+ * (the blurred wallpaper behind it, a light tint, a soft sheen and a rim, like {@link TiggoGlass}).
  * <ul>
  *   <li>Compact: live activities that are running now (navigation turn + distance, music time left,
  *   a call, an alarm), like the iPhone.</li>
@@ -104,7 +109,17 @@ final class DynamicIsland extends View {
 
     private final float u;
     private final Handler h = new Handler(Looper.getMainLooper());
-    private final Paint bg = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint body = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+    private final Paint tintP = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint glowP = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Paint rimP = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Matrix mtx = new Matrix();
+    private final Matrix unitMtx = new Matrix();
+    private final int[] loc = new int[2];
+    private final Shader glowShader = new LinearGradient(0, 0, 0, 1, 0x38FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP);
+    private final Shader rimShader = new LinearGradient(0, 0, 0, 1, 0xC0FFFFFF, 0x26FFFFFF, Shader.TileMode.CLAMP);
+    private Bitmap shaderFor;
+    private BitmapShader shader;
     private final Paint icon = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Paint bmp = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
     private final TextPaint tp = new TextPaint(Paint.ANTI_ALIAS_FLAG);
@@ -562,10 +577,7 @@ final class DynamicIsland extends View {
         float l = cx - w / 2f;
         float rad = Math.min(hh / 2f, 46f * u);
         rect.set(l, top, l + w, top + hh);
-        bg.setStyle(Paint.Style.FILL);
-        bg.setColor(Color.BLACK);
-        bg.setAlpha(Math.round(255 * sp));
-        c.drawRoundRect(rect, rad, rad, bg);
+        drawGlass(c, rad, sp, top, hh);
 
         float ce = Math.min(1f, e);
         float aCompact = Math.max(0f, 1f - ce * 2f) * sp;
@@ -596,6 +608,46 @@ final class DynamicIsland extends View {
         c.restore();
         c.restore();
         tp.setAlpha(255);
+    }
+
+    /** Frosted glass: blurred wallpaper behind the pill, a tint, a sheen at the top and a light rim. */
+    private void drawGlass(Canvas c, float rad, float sp, float top, float hh) {
+        Bitmap b = TiggoGlass.backdrop;
+        boolean glassy = b != null && !b.isRecycled();
+        if (glassy) {
+            if (b != shaderFor) {
+                shader = new BitmapShader(b, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
+                body.setShader(shader);
+                shaderFor = b;
+            }
+            getLocationInWindow(loc);
+            mtx.setScale(TiggoGlass.winW / (float) b.getWidth(), TiggoGlass.winH / (float) b.getHeight());
+            mtx.postTranslate(TiggoGlass.originX - loc[0], TiggoGlass.originY - loc[1]);
+            shader.setLocalMatrix(mtx);
+            body.setAlpha(Math.round(255 * sp));
+            c.drawRoundRect(rect, rad, rad, body);
+        }
+        // dark-blue tint keeps the white text readable on any wallpaper
+        tintP.setColor(glassy ? 0xFF12182A : 0xFF1B2030);
+        tintP.setAlpha(Math.round((glassy ? 0x66 : 0xD0) * sp));
+        c.drawRoundRect(rect, rad, rad, tintP);
+
+        unitMtx.setScale(1f, hh);
+        unitMtx.postTranslate(0f, top);
+        glowShader.setLocalMatrix(unitMtx);
+        glowP.setShader(glowShader);
+        glowP.setAlpha(Math.round(255 * sp));
+        c.drawRoundRect(rect, rad, rad, glowP);
+
+        float rw = Math.max(1f, 1.6f * u);
+        float in = rw / 2f;
+        rimShader.setLocalMatrix(unitMtx);
+        rimP.setStyle(Paint.Style.STROKE);
+        rimP.setStrokeWidth(rw);
+        rimP.setShader(rimShader);
+        rimP.setAlpha(Math.round(255 * sp));
+        c.drawRoundRect(rect.left + in, rect.top + in, rect.right - in, rect.bottom - in,
+                Math.max(0f, rad - in), Math.max(0f, rad - in), rimP);
     }
 
     private static String cut(String s, int max) {
