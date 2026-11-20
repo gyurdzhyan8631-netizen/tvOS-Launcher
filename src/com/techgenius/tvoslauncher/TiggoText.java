@@ -51,6 +51,8 @@ final class TiggoText {
         EN.put("Авто: сезон и время суток", "Auto: season and time of day");
         EN.put("Автоматически", "Automatic");
         EN.put("Автомобиль", "Car");
+        EN.put("Входящий вызов", "Incoming call");
+        EN.put("Будильник", "Alarm");
         EN.put("Автоопределение", "Auto-detect");
         EN.put("Автоопределение по местоположению или свой город", "Detect by location or choose your city");
         EN.put("Без доступа к местоположению город определяется по интернету", "Without location access the city is detected from the internet connection");

@@ -233,6 +233,7 @@ final class TiggoHome extends FrameLayout {
     static final String PREF_BOARD_EDIT = "tiggo9_board_edit";
     private static final String PREF_LAST_PAGE = "tiggo9_last_page";
     private HomePager pager;
+    private DynamicIsland island;
     private SkyView sky;
     private WidgetBoard board;
     private PageDots dots;
@@ -349,6 +350,11 @@ final class TiggoHome extends FrameLayout {
         layer.addView(buildLogo(), pos(m(330), m(60), m(60), oy + m(34)));
         layer.addView(buildTopRight(), posEnd(ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT, m(39), oy + m(24)));
+        island = new DynamicIsland(host, m(100f) / 100f);
+        FrameLayout.LayoutParams islandLp = new FrameLayout.LayoutParams(m(900), m(140),
+                Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+        islandLp.topMargin = oy + m(18);
+        layer.addView(island, islandLp);
         clockHolder.removeAllViews();
         clockHolder.addView(buildClockBlock(), new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
@@ -409,6 +415,7 @@ final class TiggoHome extends FrameLayout {
         refreshStatus();
         int start = prevPage >= 0 ? prevPage : startPage();
         pager.setPage(Math.min(start, pager.getChildCount() - 1), false);
+        island.setAlpha(sky != null && pager.current() == 0 ? 0f : 1f);
         post(this::refreshGlass);
         postDelayed(this::refreshGlass, 1200);
     }
@@ -3800,12 +3807,14 @@ final class TiggoHome extends FrameLayout {
                 sky.setRunning(homeShown && off < 0.999f);
             }
             if (clockHolder != null) clockHolder.setAlpha(sky != null ? off : 1f);
+            if (island != null) island.setAlpha(sky != null ? off : 1f);
         }
 
         @Override public void onSettled(int page) {
             host.prefs.edit().putInt(PREF_LAST_PAGE, page).apply();
             if (sky != null) sky.setRunning(homeShown && page == 0);
             if (clockHolder != null) clockHolder.setAlpha(sky != null && page == 0 ? 0f : 1f);
+            if (island != null) island.setAlpha(sky != null && page == 0 ? 0f : 1f);
             post(TiggoHome.this::refreshGlass);
         }
 
@@ -4025,6 +4034,7 @@ final class TiggoHome extends FrameLayout {
 
         @Override public void editModeChanged(boolean editing) {
             if (pager != null) pager.setLocked(editing);
+            if (island != null) island.setSuppressed(editing);
             if (editBar != null) {
                 editBar.setVisibility(editing ? VISIBLE : GONE);
                 if (editing) editBar.bringToFront();

@@ -100,7 +100,13 @@ public class MediaWatchService extends NotificationListenerService {
     public void onNotificationPosted(android.service.notification.StatusBarNotification sbn) {
         if (sbn != null) {
             pollActiveSessionsAsync(this);
+            DynamicIsland.onPosted(sbn);
         }
+    }
+
+    @Override
+    public void onNotificationRemoved(android.service.notification.StatusBarNotification sbn) {
+        DynamicIsland.onRemoved(sbn);
     }
 
     void onSessions(List<MediaController> list) {
