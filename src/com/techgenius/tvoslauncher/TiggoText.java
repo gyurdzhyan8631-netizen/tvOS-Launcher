@@ -49,10 +49,6 @@ final class TiggoText {
         EN.put("Авто (по солнцу)", "Auto (by the sun)");
         EN.put("Авто по сезону и времени суток, фото, градиенты, своё изображение", "Auto by season and time of day, photos, gradients, your own picture");
         EN.put("Авто: сезон и время суток", "Auto: season and time of day");
-        EN.put("Живые: время суток и погода", "Live: time of day and weather");
-        EN.put("Фиолетовые волны", "Purple waves");
-        EN.put("Тёмная абстракция", "Dark abstract");
-        EN.put("Камин", "Fireplace");
         EN.put("Автоматически", "Automatic");
         EN.put("Автомобиль", "Car");
         EN.put("Автоопределение", "Auto-detect");

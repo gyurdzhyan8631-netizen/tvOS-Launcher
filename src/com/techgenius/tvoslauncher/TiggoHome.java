@@ -133,16 +133,12 @@ final class TiggoHome extends FrameLayout {
     private static final String[] MUSIC_WORDS = {"музык", "music", "плеер", "player", "poweramp"};
 
     private static final String WALL_AUTO = "auto";
-    /** Live wallpaper: the season / day photo plus an animated time-of-day and weather layer. */
-    private static final String WALL_LIVE = "live";
     private static final String[] WALL_PRESETS = {
             WALL_AUTO, "photo:tiggo9_autumn.jpg", "photo:tiggo9_winter.jpg", "photo:tiggo9_spring.jpg",
-            "photo:tiggo9_summer.jpg", "photo:tiggo9_night.jpg", "photo:tiggo9-car.jpg",
-            WALL_LIVE, "photo:live_purple_waves.jpg", "photo:live_dark_blue.jpg", "video:live_fireplace.mp4"
+            "photo:tiggo9_summer.jpg", "photo:tiggo9_night.jpg", "photo:tiggo9-car.jpg"
     };
     private static final String[] WALL_CAPTIONS = {
             "Авто: сезон и время суток", "Осень", "Зима", "Весна", "Лето", "Ночь", "TIGGO 9",
-            "Живые: время суток и погода", "Фиолетовые волны", "Тёмная абстракция", "Камин",
             "Фото 1", "Фото 2", "Фото 3", "Фото 4", "Фото 5",
             "Аврора", "Полночь", "Закат", "Океан", "Графит"
     };
@@ -171,9 +167,6 @@ final class TiggoHome extends FrameLayout {
     private View wifiView;
     private View btView;
     private ImageView wallView;
-    private LiveWallView liveView;   // animated weather / time-of-day layer of the live wallpaper
-    private VideoView liveVideo;     // video wallpaper (fireplace)
-    private String liveVideoName;
     private ImageView barsView;
     private LinearLayout widgetCol;
     private LinearLayout dockSlots;
@@ -282,35 +275,6 @@ final class TiggoHome extends FrameLayout {
         wallView.setScaleX(1.12f);  // the background a little larger
         wallView.setScaleY(1.12f);
         addView(wallView, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-
-        liveVideo = new VideoView(host);
-        liveVideo.setVisibility(View.GONE);
-        liveVideo.setOnPreparedListener(mp -> {
-            mp.setLooping(true);
-            mp.setVolume(0f, 0f);
-            int vw = mp.getVideoWidth();
-            int vh = mp.getVideoHeight();
-            int cw = getWidth();
-            int ch = getHeight();
-            if (vw > 0 && vh > 0 && cw > 0 && ch > 0) {
-                // fill the screen without black bars (crop like the photos do)
-                float sc = Math.max(cw / (float) vw, ch / (float) vh);
-                liveVideo.setLayoutParams(new FrameLayout.LayoutParams(
-                        Math.round(vw * sc), Math.round(vh * sc), Gravity.CENTER));
-            }
-            if (homeShown) liveVideo.start();
-        });
-        liveVideo.setOnErrorListener((mp, what, extra) -> {
-            liveVideo.setVisibility(View.GONE);
-            return true;
-        });
-        addView(liveVideo, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-
-        liveView = new LiveWallView(host);
-        liveView.setVisibility(View.GONE);
-        addView(liveView, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
         clockHolder = new FrameLayout(host);
@@ -470,7 +434,6 @@ final class TiggoHome extends FrameLayout {
         String sel = host.prefs.getString(PREF_WALL, WALL_AUTO);
         if (sel != null && !sel.equals(wallStyle)) {
             wallStyle = sel;
-            syncLive();
             String eff = effectiveStyle(sel);
             showWallpaperAsync(eff);
             host.applyTiggoWallpaper(eff);
@@ -882,11 +845,6 @@ final class TiggoHome extends FrameLayout {
     /** Starts the status / clock / music timers (the home is visible). */
     private void startTimers() {
         homeShown = true;
-        if (liveView != null) liveView.setRunning(WALL_LIVE.equals(wallStyle));
-        if (liveVideo != null && liveVideoName != null && liveVideo.getVisibility() == View.VISIBLE
-                && !liveVideo.isPlaying()) {
-            liveVideo.start();
-        }
         if (sky != null && pager != null) sky.setRunning(pager.current() == 0);
         removeCallbacks(ticker);
         removeCallbacks(musicTicker);
@@ -898,8 +856,6 @@ final class TiggoHome extends FrameLayout {
     /** Stops every periodic timer: the launcher is behind another app or the screen is off. */
     private void stopTimers() {
         homeShown = false;
-        if (liveView != null) liveView.setRunning(false);
-        if (liveVideo != null && liveVideo.isPlaying()) liveVideo.pause();
         if (sky != null) sky.setRunning(false);
         removeCallbacks(ticker);
         removeCallbacks(musicTicker);
@@ -1359,7 +1315,6 @@ final class TiggoHome extends FrameLayout {
         boolean have = d != null && Weather.enabled(host);
         tintWeather(d, have);
         updateSky(d, have);
-        if (liveView != null && WALL_LIVE.equals(wallStyle)) liveView.setWeatherCode(have ? d.code : 0, have);
         for (Runnable r : new ArrayList<>(boardWeather)) r.run();
         if (weatherStyle() == 0) {
             refreshWeatherBlocks(d, have);
@@ -3169,74 +3124,11 @@ final class TiggoHome extends FrameLayout {
         String style = host.prefs.getString(PREF_WALL, WALL_AUTO);
         if (style == null || style.isEmpty()) style = WALL_AUTO;
         wallStyle = style;
-        syncLive();
         showWallpaperAsync(effectiveStyle(style));
     }
 
     private String effectiveStyle(String style) {
-        return WALL_AUTO.equals(style) || WALL_LIVE.equals(style) ? autoWallpaperStyle() : posterOf(style);
-    }
-
-    /** A video wallpaper ("video:name.mp4") shows its still frame ("photo:name.jpg") wherever a picture is needed. */
-    static String posterOf(String style) {
-        if (style == null || !style.startsWith("video:")) return style;
-        String name = style.substring(6);
-        int dot = name.lastIndexOf('.');
-        return "photo:" + (dot > 0 ? name.substring(0, dot) : name) + ".jpg";
-    }
-
-    /** Shows the animated layer and the video that belong to the chosen wallpaper (and hides them otherwise). */
-    private void syncLive() {
-        boolean live = WALL_LIVE.equals(wallStyle);
-        if (liveView != null) {
-            liveView.setVisibility(live ? View.VISIBLE : View.GONE);
-            liveView.setRunning(live && homeShown);
-            if (live) {
-                Weather.Data d = Weather.cached(host);
-                boolean have = d != null && Weather.enabled(host);
-                liveView.setWeatherCode(have ? d.code : 0, have);
-            }
-        }
-        String name = wallStyle != null && wallStyle.startsWith("video:") ? wallStyle.substring(6) : null;
-        if (fgView != null) fgView.setVisibility(name != null ? View.GONE : View.VISIBLE);
-        if (liveVideo == null) return;
-        if (name == null) {
-            if (liveVideoName != null) {
-                liveVideoName = null;
-                liveVideo.stopPlayback();
-            }
-            liveVideo.setVisibility(View.GONE);
-            return;
-        }
-        if (name.equals(liveVideoName)) {
-            liveVideo.setVisibility(View.VISIBLE);
-            if (homeShown && !liveVideo.isPlaying()) liveVideo.start();
-            return;
-        }
-        liveVideoName = name;
-        final String want = name;
-        new Thread(() -> {
-            final File f = new File(host.getCacheDir(), "live_" + want);
-            try {
-                if (!f.exists() || f.length() == 0) {
-                    File tmp = new File(f.getPath() + ".tmp");
-                    try (InputStream in = host.getAssets().open("backgrounds/" + want);
-                         FileOutputStream out = new FileOutputStream(tmp)) {
-                        byte[] buf = new byte[65536];
-                        int n;
-                        while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
-                    }
-                    if (!tmp.renameTo(f)) return;
-                }
-            } catch (Throwable t) {
-                return;
-            }
-            host.runOnUiThread(() -> {
-                if (liveVideo == null || !want.equals(liveVideoName)) return;
-                liveVideo.setVisibility(View.VISIBLE);
-                liveVideo.setVideoPath(f.getAbsolutePath());
-            });
-        }).start();
+        return WALL_AUTO.equals(style) ? autoWallpaperStyle() : style;
     }
 
     /** Season from the date and hemisphere (location), day or night from the weather data. */
@@ -3271,7 +3163,7 @@ final class TiggoHome extends FrameLayout {
     }
 
     private void checkAutoWallpaper() {
-        if (!WALL_AUTO.equals(wallStyle) && !WALL_LIVE.equals(wallStyle)) return;
+        if (!WALL_AUTO.equals(wallStyle)) return;
         String eff = autoWallpaperStyle();
         if (!eff.equals(shownStyle)) {
             showWallpaperAsync(eff);
@@ -3353,7 +3245,6 @@ final class TiggoHome extends FrameLayout {
     private void setOwnWallpaper(String style) {
         host.prefs.edit().putString(PREF_WALL, style).apply();
         wallStyle = style;
-        syncLive();
         String eff = effectiveStyle(style);
         showWallpaperAsync(eff);
         host.applyTiggoWallpaper(eff);  // keeps the blurred glass behind other panels in sync
