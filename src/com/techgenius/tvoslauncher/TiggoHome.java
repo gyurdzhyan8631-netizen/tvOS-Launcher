@@ -528,7 +528,11 @@ private Drawable liquid(int radiusPx) {
     return gd;
 }
 
-    /** Solid iOS button (system blue, green...) with a touch ripple. */
+    /** Glass over the softer, darker backdrop: menus and panels with a lot of text. */
+private Drawable heavyGlass(int radiusPx, int tint) {
+    return new TiggoGlass(radiusPx, tint, Math.max(1f, k * 1.6f), true);
+}
+/** Solid iOS button (system blue, green...) with a touch ripple. */
     private Drawable solid(int radiusPx, int color) {
         GradientDrawable g = new GradientDrawable();
         g.setColor(color);
