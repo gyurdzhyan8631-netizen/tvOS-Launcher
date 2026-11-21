@@ -77,6 +77,7 @@ public class SettingsActivity extends Activity {
         {APPS, "apps"},
         {CONTROL_PANEL, "sliders"},
         {LANGUAGE, "globe"}
+        {UPDATES, "settings"}
     };
 
     private TextView sideTitleView;
