@@ -520,15 +520,13 @@ final class TiggoHome extends FrameLayout {
         return new TiggoGlass(radiusPx, (a << 24) | (fill & 0x00FFFFFF), Math.max(1f, k * 1.6f));
     }
 
-    /** iOS 26 Liquid Glass: the dock, the navigation island and the status island. */
-    private Drawable liquid(int radiusPx) {
-        return new LiquidGlass(radiusPx, Math.max(1f, k * 1.6f));
-    }
-
-    /** Glass over the softer, darker backdrop: menus and panels with a lot of text. */
-    private Drawable heavyGlass(int radiusPx, int tint) {
-        return new TiggoGlass(radiusPx, tint, Math.max(1f, k * 1.6f), true);
-    }
+    /** iOS 26 Liquid Glass: the dock, the navigation island and the status isl... */
+private Drawable liquid(int radiusPx) {
+    android.graphics.drawable.GradientDrawable gd = new android.graphics.drawable.GradientDrawable();
+    gd.setColor(0x40000000);
+    gd.setCornerRadius(radiusPx);
+    return gd;
+}
 
     /** Solid iOS button (system blue, green...) with a touch ripple. */
     private Drawable solid(int radiusPx, int color) {
