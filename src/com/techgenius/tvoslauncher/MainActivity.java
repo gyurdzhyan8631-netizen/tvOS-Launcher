@@ -966,7 +966,10 @@ public class MainActivity extends Activity {
         if (firstCarWall) {
             prefs.edit().putBoolean("tiggo9_car_wall", true).apply();
             CustomMedia.setCustomWallpaperEnabled(this, CustomMedia.SCOPE_CLASSIC, false);
-            wallStyle = "photo:tiggo9-car.jpg";
+        }
+        if (firstCarWall || (currentWall != null && currentWall.contains("tiggo9"))) {
+            // the car photos are gone: a plain photo wallpaper instead
+            wallStyle = "photo:vang-vieng-sunset.jpg";
             prefs.edit().putString("wallpaper", wallStyle).apply();
             setWallpaper(wallStyle);
         }

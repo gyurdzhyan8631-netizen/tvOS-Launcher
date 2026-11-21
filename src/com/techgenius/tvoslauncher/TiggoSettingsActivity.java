@@ -54,11 +54,8 @@ public class TiggoSettingsActivity extends Activity {
     private static final int[] SECTION_COLORS = {
             0xFF30D158, 0xFF0A84FF, 0xFF0A84FF, 0xFF0A84FF, 0xFFFF375F,
             0xFF5E5CE6, 0xFFBF5AF2, 0xFF8E8E93, 0xFF8E8E93};
-    private static final String[] WALL_PRESETS = {
-            "auto", "photo:tiggo9_autumn.jpg", "photo:tiggo9_winter.jpg", "photo:tiggo9_spring.jpg",
-            "photo:tiggo9_summer.jpg", "photo:tiggo9_night.jpg", "photo:tiggo9-car.jpg"};
+    private static final String[] WALL_PRESETS = {};
     private static final String[] WALL_CAPTIONS = {
-            "Авто: сезон и время суток", "Осень", "Зима", "Весна", "Лето", "Ночь", "TIGGO 9",
             "Фото 1", "Фото 2", "Фото 3", "Фото 4", "Фото 5",
             "Аврора", "Полночь", "Закат", "Океан", "Графит"};
 
@@ -315,7 +312,7 @@ public class TiggoSettingsActivity extends Activity {
 
     private Bitmap thumbFor(String key, int w, int h) {
         try {
-            String style = "auto".equals(key) ? TiggoHome.autoWallpaperStyle(this) : key;
+            String style = key;
             if (style.startsWith("photo:")) {
                 return Scenes.loadAssetBitmap(this, "backgrounds/" + style.substring(6), w, h);
             }

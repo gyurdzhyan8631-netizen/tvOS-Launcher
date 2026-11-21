@@ -133,17 +133,14 @@ final class TiggoHome extends FrameLayout {
             "com.google.android.apps.youtube.music"};
     private static final String[] MUSIC_WORDS = {"музык", "music", "плеер", "player", "poweramp"};
 
+    /** Old setting ("auto" picked a car photo by season): moved to {@link #DEFAULT_WALL}. */
     private static final String WALL_AUTO = "auto";
-    private static final String[] WALL_PRESETS = {
-            WALL_AUTO, "photo:tiggo9_autumn.jpg", "photo:tiggo9_winter.jpg", "photo:tiggo9_spring.jpg",
-            "photo:tiggo9_summer.jpg", "photo:tiggo9_night.jpg", "photo:tiggo9-car.jpg"
-    };
+    private static final String DEFAULT_WALL = "photo:vang-vieng-sunset.jpg";
+    private static final String[] WALL_PRESETS = {};
     private static final String[] WALL_CAPTIONS = {
-            "Авто: сезон и время суток", "Осень", "Зима", "Весна", "Лето", "Ночь", "TIGGO 9",
             "Фото 1", "Фото 2", "Фото 3", "Фото 4", "Фото 5",
             "Аврора", "Полночь", "Закат", "Океан", "Графит"
     };
-    private static final String CAR_WALLPAPER = "photo:tiggo9-car.jpg";
     private static final String PREF_CARD = "tiggo9_card_app";
     private static final String PREF_ICONS = "tiggo9_icon_pack";
 
@@ -176,8 +173,6 @@ final class TiggoHome extends FrameLayout {
     private HorizontalScrollView dockScroll;
     private TextView dockTip;
     private FrameLayout clockHolder;
-    private ImageView fgView;
-    private Bitmap fgBmp;
     private TextView wBig;
     private TextView wUnitBottom;
     private TextView wCond;
@@ -308,12 +303,6 @@ final class TiggoHome extends FrameLayout {
         addView(clockHolder, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-        fgView = new ImageView(host);  // mountains, trees, the car: in front of the clock
-        fgView.setScaleType(ImageView.ScaleType.CENTER_CROP);
-        fgView.setScaleX(1.12f);
-        fgView.setScaleY(1.12f);
-        addView(fgView, new FrameLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         loadWallpaper();
 
         tintView = new View(host);
@@ -473,7 +462,8 @@ final class TiggoHome extends FrameLayout {
             if (uiW > 0 && uiH > 0) buildUi(uiW, uiH);
             scheduleIconPack();
         }
-        String sel = host.prefs.getString(PREF_WALL, WALL_AUTO);
+        String sel = host.prefs.getString(PREF_WALL, DEFAULT_WALL);
+        if (sel != null && (WALL_AUTO.equals(sel) || sel.contains("tiggo9"))) sel = DEFAULT_WALL;
         if (sel != null && !sel.equals(wallStyle)) {
             wallStyle = sel;
             String eff = effectiveStyle(sel);
@@ -530,6 +520,11 @@ final class TiggoHome extends FrameLayout {
         return new TiggoGlass(radiusPx, (a << 24) | (fill & 0x00FFFFFF), Math.max(1f, k * 1.6f));
     }
 
+    /** iOS 26 Liquid Glass: the dock, the navigation island and the status island. */
+    private Drawable liquid(int radiusPx) {
+        return new LiquidGlass(radiusPx, Math.max(1f, k * 1.6f));
+    }
+
     /** Glass over the softer, darker backdrop: menus and panels with a lot of text. */
     private Drawable heavyGlass(int radiusPx, int tint) {
         return new TiggoGlass(radiusPx, tint, Math.max(1f, k * 1.6f), true);
@@ -547,7 +542,7 @@ final class TiggoHome extends FrameLayout {
     private void refreshGlass() {
         if (getWidth() == 0) return;
         boolean onSky = sky != null && pager != null && pager.current() == 0;
-        TiggoGlass.capture(this, 4, onSky ? sky : null);
+        TiggoGlass.capture(this, 3, onSky ? sky : null);  // wallpaper, clock, tint
         TiggoGlass.invalidateTree(this);
     }
 
@@ -667,7 +662,7 @@ final class TiggoHome extends FrameLayout {
         capsule.setOrientation(LinearLayout.HORIZONTAL);
         capsule.setGravity(Gravity.CENTER_VERTICAL);
         capsule.setPadding(m(14), m(4), m(14), m(4));
-        capsule.setBackground(glass(m(40), TiggoTheme.barFill(host)));
+        capsule.setBackground(liquid(m(40)));
 
         vpnView = statusButton(TiggoIcons.vpnShield(m(44), false),
                 v -> openSettings(Settings.ACTION_VPN_SETTINGS));
@@ -743,6 +738,7 @@ final class TiggoHome extends FrameLayout {
         c.drawText(t, 0, t.length(), x, y, fillPaint);
     }
 
+    /** Clock of the sky page (the sky is its background, so it keeps the frosted-white digits). */
     private static final class GlassClock extends TextClock {
         GlassClock(Context c) {
             super(c);
@@ -750,6 +746,103 @@ final class TiggoHome extends FrameLayout {
 
         @Override protected void onDraw(android.graphics.Canvas canvas) {
             drawGlass(canvas, this);
+        }
+    }
+
+    /**
+     * The big clock as liquid glass, like the iOS 26 lock screen: tall thin digits and a glass colon
+     * that show the wallpaper through them (magnified, as if refracted), a faint light tint and a
+     * bright outline that catches the light.
+     */
+    private final class LiquidClock extends TextClock {
+        private final android.graphics.Paint tp = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.Paint fillP = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.Paint shadeP = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.Paint rimP = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+        private final android.graphics.Path glyphs = new android.graphics.Path();
+        private final android.graphics.Path part = new android.graphics.Path();
+        private final android.graphics.Matrix mtx = new android.graphics.Matrix();
+        private final int[] loc = new int[2];
+        private final int[] homeLoc = new int[2];
+        private Bitmap shaderFor;
+        private android.graphics.BitmapShader shader;
+
+        LiquidClock(Context c) {
+            super(c);
+            rimP.setStyle(android.graphics.Paint.Style.STROKE);
+            rimP.setStrokeJoin(android.graphics.Paint.Join.ROUND);
+        }
+
+        @Override protected void onDraw(android.graphics.Canvas c) {
+            CharSequence cs = getText();
+            String t = cs == null ? "" : cs.toString();
+            int colon = t.indexOf(':');
+            if (colon <= 0 || colon >= t.length() - 1) {
+                super.onDraw(c);
+                return;
+            }
+            float size = getTextSize();
+            tp.setTypeface(getTypeface());
+            tp.setTextSize(size);
+            String hh = t.substring(0, colon);
+            String mm = t.substring(colon + 1);
+            float wh = tp.measureText(hh);
+            float wm = tp.measureText(mm);
+            float gap = size * 0.30f;
+            float total = wh + gap + wm;
+            float x0 = (getWidth() - total) / 2f;
+            float base = getBaseline();
+            float digit = size * 0.71f;
+
+            glyphs.reset();
+            part.reset();
+            tp.getTextPath(hh, 0, hh.length(), x0, base, part);
+            glyphs.addPath(part);
+            part.reset();
+            tp.getTextPath(mm, 0, mm.length(), x0 + wh + gap, base, part);
+            glyphs.addPath(part);
+            float cxm = x0 + wh + gap / 2f;
+            float dot = size * 0.045f;
+            glyphs.addCircle(cxm, base - digit * 0.66f, dot, android.graphics.Path.Direction.CW);
+            glyphs.addCircle(cxm, base - digit * 0.30f, dot, android.graphics.Path.Direction.CW);
+
+            Bitmap wb = wallBmp;
+            int hw = TiggoHome.this.getWidth();
+            int hgt = TiggoHome.this.getHeight();
+            if (wb != null && !wb.isRecycled() && hw > 0 && hgt > 0) {
+                if (wb != shaderFor) {
+                    shader = new android.graphics.BitmapShader(wb, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
+                    fillP.setShader(shader);
+                    shaderFor = wb;
+                }
+                getLocationInWindow(loc);
+                TiggoHome.this.getLocationInWindow(homeLoc);
+                float s = Math.max(hw / (float) wb.getWidth(), hgt / (float) wb.getHeight());
+                mtx.setScale(s, s);                                                    // centre-crop, like the wallpaper
+                mtx.postTranslate((hw - wb.getWidth() * s) / 2f, (hgt - wb.getHeight() * s) / 2f);
+                mtx.postScale(1.12f, 1.12f, hw / 2f, hgt / 2f);                        // the wallpaper view is 12% larger
+                mtx.postTranslate(homeLoc[0] - loc[0], homeLoc[1] - loc[1]);           // into this view
+                mtx.postScale(1.10f, 1.10f, getWidth() / 2f, getHeight() / 2f);        // the lens: the picture bends
+                shader.setLocalMatrix(mtx);
+                fillP.setColor(0xFFFFFFFF);
+            } else {
+                fillP.setShader(null);
+                fillP.setColor(0x55FFFFFF);
+            }
+            c.drawPath(glyphs, fillP);
+
+            // light tint: brighter at the top, a little shade at the bottom
+            shadeP.setShader(new LinearGradient(0, base - digit, 0, base,
+                    new int[]{0x46FFFFFF, 0x14FFFFFF, 0x26000000}, new float[]{0f, 0.55f, 1f},
+                    Shader.TileMode.CLAMP));
+            c.drawPath(glyphs, shadeP);
+
+            // the outline that catches the light: bright top-left and bottom-right
+            rimP.setStrokeWidth(Math.max(2f, size * 0.0065f));
+            rimP.setShader(new LinearGradient(x0, base - digit, x0 + total, base,
+                    new int[]{0xF2FFFFFF, 0x66FFFFFF, 0x26FFFFFF, 0x88FFFFFF, 0xE0FFFFFF},
+                    new float[]{0f, 0.3f, 0.55f, 0.8f, 1f}, Shader.TileMode.CLAMP));
+            c.drawPath(glyphs, rimP);
         }
     }
 
@@ -767,14 +860,16 @@ final class TiggoHome extends FrameLayout {
     private View buildClockBlock() {
         int style = TiggoTheme.get(host, TiggoTheme.K_CLOCK, 1, 3);
         boolean glassy = style == 1 || style == 2;
-        float timeSize = style == 2 ? 360f : (style == 3 ? 180f : 300f);
+        float timeSize = style == 1 ? 380f : (style == 2 ? 440f : (style == 3 ? 180f : 300f));
         float dateSize = style == 2 ? 34f : (style == 3 ? 26f : 32f);
         // iOS lock screen: heavy rounded-looking digits; "Classic" keeps a light, airy face
-        android.graphics.Typeface thin = style == 0 ? Ui.font(host, "regular") : Ui.font(host, "display");
+        android.graphics.Typeface thin = glassy
+                ? android.graphics.Typeface.create("sans-serif-condensed-light", android.graphics.Typeface.NORMAL)
+                : (style == 0 ? Ui.font(host, "regular") : Ui.font(host, "display"));
         FrameLayout box = new FrameLayout(host);
         box.setClipChildren(false);
 
-        TextClock time = glassy ? new GlassClock(host) : new TextClock(host);
+        TextClock time = glassy ? new LiquidClock(host) : new TextClock(host);
         time.setFormat24Hour("HH:mm");
         time.setFormat12Hour("HH:mm");
         time.setTextColor(Color.WHITE);
@@ -784,7 +879,7 @@ final class TiggoHome extends FrameLayout {
         android.graphics.Paint probe = new android.graphics.Paint();
         probe.setTypeface(thin);
         probe.setTextSize(timeSize * k);
-        time.setMinWidth(Math.round(probe.measureText("00:00")) + m(16));  // never cut the minutes
+        time.setMinWidth(Math.round(probe.measureText("00:00")) + m(56));  // never cut the minutes
         FrameLayout.LayoutParams tl = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.CENTER_HORIZONTAL);
         tl.topMargin = oy + m(113f - 0.2167f * timeSize);  // top of the digits at the same height as in the photo
@@ -898,7 +993,6 @@ final class TiggoHome extends FrameLayout {
             HotspotClients.query(host, TiggoHome.this::onHotspot);
             if (tickCount % 12 == 0) refreshGlass();  // the clock behind the glass moved on
             if (tickCount % 12 == 0) refreshWeather();
-            if (tickCount % 60 == 0) checkAutoWallpaper();
             if (tickCount % 12 == 0 && TiggoTheme.isAuto(host)) refreshStyleIfChanged();
             if (tickCount % 120 == 0) Weather.refresh(host, false, TiggoHome.this::refreshWeather);
             if (homeShown) postDelayed(this, 5000);
@@ -1541,7 +1635,7 @@ final class TiggoHome extends FrameLayout {
     /** Back / Home / Recents on a glass pill that matches the dock. */
     private View buildNavIsland() {
         float ds = dockScale();
-        return new NavIsland(host, m(100f * ds) / 100f, glass(m(44 * ds), 0x5AFFFFFF),
+        return new NavIsland(host, m(100f * ds) / 100f, liquid(m(44 * ds)),
                 () -> {
                     host.dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_BACK));
                     host.dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_BACK));
@@ -1559,7 +1653,7 @@ final class TiggoHome extends FrameLayout {
         dock.setOrientation(LinearLayout.HORIZONTAL);
         dock.setGravity(Gravity.CENTER_VERTICAL);
         dock.setPadding(m(30 * ds), m(8 * ds), m(34 * ds), m(8 * ds));
-        dock.setBackground(glass(m(44 * ds), 0x5AFFFFFF));
+        dock.setBackground(liquid(m(44 * ds)));
         dockView = dock;
         dockTip = null;
 
@@ -3222,57 +3316,17 @@ final class TiggoHome extends FrameLayout {
     // ------------------------------------------------------------------ wallpaper (kept by the home itself)
 
     private void loadWallpaper() {
-        if (!host.prefs.getBoolean("tiggo9_auto_init", false)) {
-            host.prefs.edit().putBoolean("tiggo9_auto_init", true).putString(PREF_WALL, WALL_AUTO).apply();
+        String style = host.prefs.getString(PREF_WALL, DEFAULT_WALL);
+        if (style == null || style.isEmpty() || WALL_AUTO.equals(style) || style.contains("tiggo9")) {
+            style = DEFAULT_WALL;  // the car photos are gone
+            host.prefs.edit().putString(PREF_WALL, style).apply();
         }
-        String style = host.prefs.getString(PREF_WALL, WALL_AUTO);
-        if (style == null || style.isEmpty()) style = WALL_AUTO;
         wallStyle = style;
         showWallpaperAsync(effectiveStyle(style));
     }
 
     private String effectiveStyle(String style) {
-        return WALL_AUTO.equals(style) ? autoWallpaperStyle() : style;
-    }
-
-    /** Season from the date and hemisphere (location), day or night from the weather data. */
-    private String autoWallpaperStyle() {
-        return autoWallpaperStyle(host);
-    }
-
-    /** Season from the date and hemisphere (location), day or night from the weather data. */
-    static String autoWallpaperStyle(Context c) {
-        Calendar cal = Calendar.getInstance();
-        int month = cal.get(Calendar.MONTH);  // 0 = January
-        double lat = Weather.latitude(c);
-        if (!Double.isNaN(lat) && lat < 0) month = (month + 6) % 12;  // southern hemisphere
-        int season;  // 0 winter, 1 spring, 2 summer, 3 autumn
-        if (month == 11 || month <= 1) season = 0;
-        else if (month <= 4) season = 1;
-        else if (month <= 7) season = 2;
-        else season = 3;
-        int hour = cal.get(Calendar.HOUR_OF_DAY);
-        boolean night;
-        Weather.Data d = Weather.cached(c);
-        if (d != null && Weather.enabled(c)) night = !d.day;
-        else night = TiggoTheme.isNight(c, cal.getTimeInMillis());  // sunrise / sunset at the location
-        if (night) return "photo:tiggo9_night.jpg";
-        if (season == 3 && hour >= 17) return "photo:tiggo9_autumn_evening.jpg";
-        switch (season) {
-            case 0: return "photo:tiggo9_winter.jpg";
-            case 1: return "photo:tiggo9_spring.jpg";
-            case 2: return "photo:tiggo9_summer.jpg";
-            default: return "photo:tiggo9_autumn.jpg";
-        }
-    }
-
-    private void checkAutoWallpaper() {
-        if (!WALL_AUTO.equals(wallStyle)) return;
-        String eff = autoWallpaperStyle();
-        if (!eff.equals(shownStyle)) {
-            showWallpaperAsync(eff);
-            host.applyTiggoWallpaper(eff);
-        }
+        return WALL_AUTO.equals(style) ? DEFAULT_WALL : style;
     }
 
     private void showWallpaperAsync(final String style) {
@@ -3280,22 +3334,15 @@ final class TiggoHome extends FrameLayout {
         shownStyle = style;
         new Thread(() -> {
             final Bitmap b = decodeWallpaper(style);
-            final Bitmap cut = b == null ? null : DepthMask.cutout(b);
             host.runOnUiThread(() -> {
                 if (b == null) return;
                 if (!style.equals(shownStyle)) {
                     // a newer wallpaper was asked for while this one was decoding: drop it
                     b.recycle();
-                    if (cut != null) cut.recycle();
                     return;
                 }
                 final Bitmap oldWall = wallBmp;
-                final Bitmap oldFg = fgBmp;
                 wallBmp = b;
-                fgBmp = cut;
-                fgView.setAlpha(0f);
-                fgView.setImageBitmap(cut);
-                fgView.animate().alpha(1f).setDuration(700).start();
                 Drawable old = wallView.getDrawable();
                 Drawable from = old instanceof TransitionDrawable ? ((TransitionDrawable) old).getDrawable(1) : old;
                 final BitmapDrawable next = new BitmapDrawable(host.getResources(), b);
@@ -3306,12 +3353,12 @@ final class TiggoHome extends FrameLayout {
                     // when the cross-fade is over keep only the new picture and free the old ones
                     postDelayed(() -> {
                         if (wallView.getDrawable() == td) wallView.setImageDrawable(next);
-                        recycleLater(oldWall, oldFg);
+                        recycleLater(oldWall);
                         refreshGlass();
                     }, 900);
                 } else {
                     wallView.setImageDrawable(next);
-                    recycleLater(oldWall, oldFg);
+                    recycleLater(oldWall);
                     postDelayed(TiggoHome.this::refreshGlass, 750);
                 }
             });
@@ -3319,10 +3366,9 @@ final class TiggoHome extends FrameLayout {
     }
 
     /** Frees wallpapers that are no longer shown (a few frames later, so nothing still draws them). */
-    private void recycleLater(final Bitmap oldWall, final Bitmap oldFg) {
+    private void recycleLater(final Bitmap oldWall) {
         postDelayed(() -> {
             if (oldWall != null && oldWall != wallBmp && !oldWall.isRecycled()) oldWall.recycle();
-            if (oldFg != null && oldFg != fgBmp && !oldFg.isRecycled()) oldFg.recycle();
         }, 300);
     }
 
@@ -3336,7 +3382,7 @@ final class TiggoHome extends FrameLayout {
             } else {
                 b = MainActivity.makeWallpaperBase(style);
             }
-            if (b == null) b = Scenes.loadAssetBitmap(host, "backgrounds/tiggo9-car.jpg", 1920, 1080);
+            if (b == null) b = Scenes.loadAssetBitmap(host, "backgrounds/vang-vieng-sunset.jpg", 1920, 1080);
             if (b == null) return null;
             Bitmap m = b.isMutable() ? b : b.copy(Bitmap.Config.ARGB_8888, true);
             if (m != b) b.recycle();
@@ -3880,7 +3926,7 @@ final class TiggoHome extends FrameLayout {
 
     private int clockSize() {
         int style = TiggoTheme.get(host, TiggoTheme.K_CLOCK, 1, 3);
-        return style == 2 ? 360 : (style == 3 ? 180 : 300);
+        return style == 1 ? 380 : (style == 2 ? 440 : (style == 3 ? 180 : 300));
     }
 
     private int startPage() {
