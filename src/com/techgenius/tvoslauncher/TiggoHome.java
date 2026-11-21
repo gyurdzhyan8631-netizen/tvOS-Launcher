@@ -124,6 +124,7 @@ final class TiggoHome extends FrameLayout {
     private static final String[] NAV_PACKAGES = {
             "ru.yandex.yandexnavi", "ru.yandex.yandexmaps", "ru.dublgis.dgismobile", "com.navitel",
             "com.waze", "com.sygic.aura", "net.osmand.plus", "net.osmand", "app.organicmaps",
+            "app.comaps", "app.comaps.fdroid", "app.comaps.google", "app.comaps.debug",
             "com.google.android.apps.maps"};
     private static final String[] NAV_WORDS = {
             "навигатор", "navigator", "navitel", "навител", "waze", "sygic", "osmand", "карты", "maps"};
@@ -364,6 +365,11 @@ final class TiggoHome extends FrameLayout {
         int dockW = Math.min(Math.round(w * 0.67f), m(1500));
         int dockH = m(132 * ds);
         int dockTop = Math.max(m(560), h - dockH - m(60));
+        // the navigation island sits next to the dock; the pair is centred on the screen
+        int navW = m((3 * NavIsland.ITEM_W + 2 * NavIsland.SIDE_PAD) * ds);
+        int navGap = m(26 * ds);
+        dockW = Math.max(m(480), Math.min(dockW, w - 2 * m(48) - navGap - navW));
+        int dockLeft = (w - (dockW + navGap + navW)) / 2;
 
         // favourite apps now live in the "Приложения" widget; the old column is kept off screen
         slotCount = 12;
@@ -390,15 +396,20 @@ final class TiggoHome extends FrameLayout {
         dots = new PageDots(host, pager.getChildCount());
         dots.setOnClickListener(v -> pager.setPage(pager.current() == 0 ? pager.getChildCount() - 1 : 0, true));
         FrameLayout.LayoutParams dotsLp = new FrameLayout.LayoutParams(m(150), m(40),
-                Gravity.TOP | Gravity.CENTER_HORIZONTAL);
+                Gravity.TOP | Gravity.START);
+        dotsLp.leftMargin = dockLeft + (dockW - m(150)) / 2;
         dotsLp.topMargin = dockTop - m(50);
         layer.addView(dots, dotsLp);
         if (pager.getChildCount() < 2) dots.setVisibility(GONE);
 
         FrameLayout.LayoutParams dockLp = new FrameLayout.LayoutParams(dockW, dockH, Gravity.TOP | Gravity.START);
-        dockLp.leftMargin = (w - dockW) / 2;
+        dockLp.leftMargin = dockLeft;
         dockLp.topMargin = dockTop;
         layer.addView(buildDock(), dockLp);
+        FrameLayout.LayoutParams navLp = new FrameLayout.LayoutParams(navW, dockH, Gravity.TOP | Gravity.START);
+        navLp.leftMargin = dockLeft + dockW + navGap;
+        navLp.topMargin = dockTop;
+        layer.addView(buildNavIsland(), navLp);
 
         editBar = buildEditBar();
         FrameLayout.LayoutParams ebLp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, m(76),
@@ -1474,6 +1485,21 @@ final class TiggoHome extends FrameLayout {
             if (target != x) dockScroll.smoothScrollTo(target, 0);
         }
     };
+
+    /** Back / Home / Recents on a glass pill that matches the dock. */
+    private View buildNavIsland() {
+        float ds = dockScale();
+        return new NavIsland(host, m(100f * ds) / 100f, glass(m(44 * ds), 0x5AFFFFFF),
+                () -> {
+                    host.dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_BACK));
+                    host.dispatchKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_BACK));
+                },
+                () -> {
+                    closeAllApps();
+                    if (pager != null && pager.current() != 0) pager.setPage(0, true);
+                },
+                () -> ButtonMapper.sendKeyCode(host, KeyEvent.KEYCODE_APP_SWITCH));
+    }
 
     private View buildDock() {
         float ds = dockScale();
@@ -3999,11 +4025,12 @@ final class TiggoHome extends FrameLayout {
 
     // ------------------------------------------------------------------ widget factory
 
-    private static final String[] BOARD_TYPES = {"weather", "music", "calendar", "nav", "clock", "apps"};
-    private static final String[] BOARD_NAMES = {"Погода", "Музыка", "Календарь", "Навигация", "Часы", "Приложения"};
+    private static final String[] BOARD_TYPES = {"weather", "music", "calendar", "nav", "clock", "apps", "comaps"};
+    private static final String[] BOARD_NAMES = {"Погода", "Музыка", "Календарь", "Навигация", "Часы", "Приложения", "Organic Maps"};
     private static final String[] BOARD_HINTS = {
             "Температура, небо и прогноз по часам", "Обложка, трек и управление", "Число, день недели и месяц",
-            "Быстрый запуск навигатора", "Стрелочные часы как в iOS", "Избранные приложения"};
+            "Быстрый запуск навигатора", "Стрелочные часы как в iOS", "Избранные приложения",
+            "Расстояние до манёвра и улица из Organic Maps"};
 
     private static String boardName(String type) {
         for (int i = 0; i < BOARD_TYPES.length; i++) if (BOARD_TYPES[i].equals(type)) return TiggoText.t(BOARD_NAMES[i]);
@@ -4019,6 +4046,7 @@ final class TiggoHome extends FrameLayout {
                 case "nav": return buildNavWidget(it);
                 case "clock": return buildClockWidget(it);
                 case "apps": return buildAppsWidget(it);
+                case "comaps": return buildCoMapsWidget(it);
                 default: return null;
             }
         }
@@ -4377,6 +4405,91 @@ final class TiggoHome extends FrameLayout {
         card.setOnClickListener(v -> launchWidgetApp("nav"));
         pressScale(card);
         return card;
+    }
+
+    /** Organic Maps card (type id "comaps" is kept for saved boards): distance to the next manoeuvre and the street. */
+    private View buildCoMapsWidget(WidgetBoard.Item it) {
+        final boolean tall = it.h >= 2;
+        MainActivity.AppEntry found = null;
+        for (String p : NavFeed.MAPS) {
+            found = findAnyByPackage(p);
+            if (found != null) break;
+        }
+        final MainActivity.AppEntry app = found;
+        final String appName = found != null && found.label != null && !found.label.isEmpty() ? found.label : "Organic Maps";
+        final TextView big = label(appName, tall ? 54 : 36, "semibold");
+        final TextView sub = label("", tall ? 22 : 18, "regular");
+        sub.setAlpha(0.85f);
+        sub.setMaxLines(2);
+        final Runnable refresh = () -> {
+            if (app == null) {
+                big.setText(appName);
+                sub.setText(TiggoText.t("Organic Maps не установлен"));
+            } else if (NavFeed.active) {
+                big.setText(NavFeed.dist.isEmpty() ? appName : NavFeed.dist);
+                sub.setText(NavFeed.street.isEmpty() ? TiggoText.t("Маршрут активен") : NavFeed.street);
+            } else {
+                big.setText(appName);
+                sub.setText(TiggoText.t("Маршрут не задан"));
+            }
+        };
+        refresh.run();
+        LinearLayout card = new LinearLayout(host) {
+            @Override protected void onAttachedToWindow() {
+                super.onAttachedToWindow();
+                NavFeed.listen(refresh);
+                NavFeed.seed();
+                refresh.run();
+            }
+
+            @Override protected void onDetachedFromWindow() {
+                super.onDetachedFromWindow();
+                NavFeed.unlisten(refresh);
+            }
+        };
+        card.setOrientation(tall ? LinearLayout.VERTICAL : LinearLayout.HORIZONTAL);
+        card.setGravity(tall ? Gravity.START : Gravity.CENTER_VERTICAL);
+        card.setPadding(m(24), m(20), m(22), m(20));
+        card.setBackground(pressable(m(34), TiggoTheme.tileFill(host)));
+        ImageView icon = new ImageView(host);
+        icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        Drawable d = app != null ? iconOf(app) : null;
+        int is = m(tall ? 96 : 76);
+        if (d != null) icon.setImageDrawable(d);
+        else icon.setImageBitmap(TiggoIcons.navTile(is));
+        card.addView(icon, lp(is, is));
+        LinearLayout col = new LinearLayout(host);
+        col.setOrientation(LinearLayout.VERTICAL);
+        col.addView(big);
+        col.addView(sub);
+        if (tall) {
+            View spacer = new View(host);
+            card.addView(spacer, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+            card.addView(col, lp(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+            TextView go = text(TiggoText.t("Открыть карту"), 22, true);
+            go.setGravity(Gravity.CENTER);
+            go.setBackground(solid(m(26), 0xFF0A84FF));
+            go.setOnClickListener(v -> openCoMaps(app));
+            LinearLayout.LayoutParams gl = lp(ViewGroup.LayoutParams.MATCH_PARENT, m(64));
+            gl.topMargin = m(14);
+            card.addView(go, gl);
+        } else {
+            LinearLayout.LayoutParams cl = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+            cl.leftMargin = m(18);
+            card.addView(col, cl);
+            card.addView(iconView(TiggoIcons.chevron(m(32), WHITE)), lp(m(34), m(34)));
+        }
+        card.setOnClickListener(v -> openCoMaps(app));
+        pressScale(card);
+        return card;
+    }
+
+    private void openCoMaps(MainActivity.AppEntry app) {
+        if (app == null) {
+            host.toast(TiggoText.t("Organic Maps не установлен"));
+            return;
+        }
+        launchApp(this, app);
     }
 
     // ---- analog clock

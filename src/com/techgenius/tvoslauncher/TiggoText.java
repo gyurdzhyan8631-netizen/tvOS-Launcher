@@ -51,6 +51,12 @@ final class TiggoText {
         EN.put("Авто: сезон и время суток", "Auto: season and time of day");
         EN.put("Автоматически", "Automatic");
         EN.put("Автомобиль", "Car");
+        EN.put("Недавние", "Recents");
+        EN.put("Organic Maps не установлен", "Organic Maps is not installed");
+        EN.put("Маршрут активен", "Route active");
+        EN.put("Маршрут не задан", "No route set");
+        EN.put("Открыть карту", "Open map");
+        EN.put("Расстояние до манёвра и улица из Organic Maps", "Distance to the next turn and the street from Organic Maps");
         EN.put("Входящий вызов", "Incoming call");
         EN.put("Будильник", "Alarm");
         EN.put("Автоопределение", "Auto-detect");

@@ -61,7 +61,8 @@ final class DynamicIsland extends View {
     private static final String[] NAV_PKGS = {
             "ru.yandex.yandexnavi", "ru.yandex.yandexmaps", "ru.yandex.maps", "com.google.android.apps.maps",
             "com.waze", "ru.dublgis.dgismobile", "com.sygic.aura", "net.osmand", "net.osmand.plus",
-            "app.organicmaps", "com.here.app.maps", "ru.mail.mailnews", "com.mapfactor.navigator"
+            "app.organicmaps", "app.organicmaps.web", "app.organicmaps.beta", "app.organicmaps.debug", "app.comaps", "app.comaps.fdroid", "app.comaps.google", "app.comaps.debug",
+            "com.here.app.maps", "ru.mail.mailnews", "com.mapfactor.navigator"
     };
 
     /** "300 м", "1,2 км", "500 m", "0.3 mi" ... */
