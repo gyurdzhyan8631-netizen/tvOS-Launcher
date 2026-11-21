@@ -320,6 +320,7 @@ public class PowerService extends AccessibilityService {
         syncCaffeine(this);
         LocalAdb.ensureKeepAliveWatchdog(this);
         MediaWatchService.ensureSessionTracking(this);
+        NavOverlay.onServiceReady();
 
         // If "Launch Automatically on System Boot" is enabled and the system just booted,
         // AccessibilityService connects much earlier than BOOT_COMPLETED on many TVs: launch Home immediately!
@@ -334,6 +335,7 @@ public class PowerService extends AccessibilityService {
         stopVolumeWatcher();
         stopAudioDumpVolumeWatcher();
         if (instance == this) instance = null;
+        NavOverlay.onServiceGone();
         return super.onUnbind(intent);
     }
 
@@ -343,6 +345,7 @@ public class PowerService extends AccessibilityService {
         stopVolumeWatcher();
         stopAudioDumpVolumeWatcher();
         if (instance == this) instance = null;
+        NavOverlay.onServiceGone();
         Context appCtx = getApplicationContext();
         if (LocalAdb.shouldAutoRepairAccessibility(appCtx)) {
             LocalAdb.scheduleKeepAliveRepair(appCtx, 1000L);

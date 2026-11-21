@@ -166,6 +166,8 @@ final class TiggoHome extends FrameLayout {
     private TextView dateView;
     private ImageView vpnView;
     private View wifiView;
+    private TextView hotspotBadge;
+    private int hotspotClients = -1;
     private View btView;
     private ImageView wallView;
     private ImageView barsView;
@@ -200,6 +202,28 @@ final class TiggoHome extends FrameLayout {
     private FrameLayout promoLayer;
     private VideoView promoVideo;
     private boolean promoOpen;
+    private int promoLastPos = -1;
+    private int promoStuck;
+    /** Closes the promo when the video never starts or stops moving, instead of leaving a frozen screen. */
+    private final Runnable promoWatch = new Runnable() {
+        @Override public void run() {
+            if (!promoOpen || promoVideo == null) return;
+            try {
+                int pos = promoVideo.getCurrentPosition();
+                if (!promoVideo.isPlaying() || pos == promoLastPos) promoStuck++;
+                else promoStuck = 0;
+                promoLastPos = pos;
+                if (promoStuck >= 4) {
+                    host.toast(TiggoText.t("Не удалось воспроизвести видео"));
+                    closePromo();
+                    return;
+                }
+            } catch (Throwable ignored) {
+                // keep watching
+            }
+            postDelayed(this, 2000);
+        }
+    };
     private FrameLayout drawerPanel;
     private GradientDrawable vpnPill;
     private TextView vpnText;
@@ -650,7 +674,24 @@ final class TiggoHome extends FrameLayout {
         capsule.addView(vpnView, lp(m(66), m(64)));
         wifiView = statusButton(Glyphs.get("wifi", m(44), WHITE),
                 v -> openSettings(Settings.ACTION_WIFI_SETTINGS));
-        capsule.addView(wifiView, lp(m(66), m(64)));
+        FrameLayout wifiBox = new FrameLayout(host);
+        wifiBox.addView(wifiView, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        // yellow badge with the number of devices connected to our hotspot
+        hotspotBadge = text("", 15, true);
+        hotspotBadge.setTextColor(0xFF1C1C1E);
+        hotspotBadge.setGravity(Gravity.CENTER);
+        hotspotBadge.setPadding(0, 0, 0, 0);
+        GradientDrawable badgeBg = new GradientDrawable();
+        badgeBg.setShape(GradientDrawable.OVAL);
+        badgeBg.setColor(0xFFFFD60A);
+        hotspotBadge.setBackground(badgeBg);
+        hotspotBadge.setVisibility(GONE);
+        FrameLayout.LayoutParams badgeLp = new FrameLayout.LayoutParams(m(26), m(26), Gravity.TOP | Gravity.END);
+        badgeLp.topMargin = m(2);
+        badgeLp.rightMargin = m(0);
+        wifiBox.addView(hotspotBadge, badgeLp);
+        capsule.addView(wifiBox, lp(m(66), m(64)));
         btView = statusButton(TiggoIcons.bluetooth(m(40), WHITE),
                 v -> openSettings(Settings.ACTION_BLUETOOTH_SETTINGS));
         capsule.addView(btView, lp(m(66), m(64)));
@@ -834,6 +875,14 @@ final class TiggoHome extends FrameLayout {
         }
     }
 
+    /** Shows how many devices are connected to the hotspot (count -1 = unknown, keep what is shown). */
+    private void onHotspot(int count) {
+        if (count < 0 || hotspotBadge == null || count == hotspotClients) return;
+        hotspotClients = count;
+        hotspotBadge.setText(count > 9 ? "9+" : String.valueOf(count));
+        hotspotBadge.setVisibility(count > 0 ? VISIBLE : GONE);
+    }
+
     private final Runnable ticker = new Runnable() {
         @Override public void run() {
             refreshStatus();
@@ -846,6 +895,7 @@ final class TiggoHome extends FrameLayout {
                 if (lastDayShown >= 0 && day != lastDayShown && board != null) board.rebuildType("calendar");
                 lastDayShown = day;
             }
+            HotspotClients.query(host, TiggoHome.this::onHotspot);
             if (tickCount % 12 == 0) refreshGlass();  // the clock behind the glass moved on
             if (tickCount % 12 == 0) refreshWeather();
             if (tickCount % 60 == 0) checkAutoWallpaper();
@@ -863,6 +913,7 @@ final class TiggoHome extends FrameLayout {
     /** Starts the status / clock / music timers (the home is visible). */
     private void startTimers() {
         homeShown = true;
+        NavOverlay.setHomeVisible(true);
         if (sky != null && pager != null) sky.setRunning(pager.current() == 0);
         removeCallbacks(ticker);
         removeCallbacks(musicTicker);
@@ -874,6 +925,7 @@ final class TiggoHome extends FrameLayout {
     /** Stops every periodic timer: the launcher is behind another app or the screen is off. */
     private void stopTimers() {
         homeShown = false;
+        NavOverlay.setHomeVisible(false);
         if (sky != null) sky.setRunning(false);
         removeCallbacks(ticker);
         removeCallbacks(musicTicker);
@@ -1679,7 +1731,13 @@ final class TiggoHome extends FrameLayout {
                 float t = (cx - dockTouchX) / (slotW * 1.1f);
                 mag = 1f + 0.16f * (float) Math.exp(-t * t);
             }
-            float scale = (0.68f + 0.32f * edge) * mag;
+            // carousel: the icon in the middle of the dock is the biggest
+            float lift = 1f;
+            if (scrolls) {
+                float t2 = (cx - vw / 2f) / (slotW * 1.2f);
+                lift = 1f + 0.16f * (float) Math.exp(-t2 * t2);
+            }
+            float scale = (0.68f + 0.32f * edge) * Math.max(lift, mag);
             float alpha = 0.3f + 0.7f * edge;
             if (animate) {
                 tile.animate().scaleX(scale).scaleY(scale).setDuration(160).start();
@@ -2613,8 +2671,9 @@ final class TiggoHome extends FrameLayout {
         promoLayer = new FrameLayout(host);
         promoLayer.setBackgroundColor(Color.BLACK);
         promoLayer.setClickable(true);
-        promoVideo = new VideoView(host);
-        promoLayer.addView(promoVideo, new FrameLayout.LayoutParams(
+        final VideoView pv = new VideoView(host);
+        promoVideo = pv;
+        promoLayer.addView(pv, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT, Gravity.CENTER));
         TextView close = text("✕", 32, true);
         close.setGravity(Gravity.CENTER);
@@ -2625,22 +2684,33 @@ final class TiggoHome extends FrameLayout {
         cl.rightMargin = m(24);
         promoLayer.addView(close, cl);
         promoLayer.setOnClickListener(v -> closePromo());
-        promoVideo.setOnCompletionListener(mp -> closePromo());
-        promoVideo.setOnErrorListener((mp, what, extra) -> {
+        pv.setOnCompletionListener(mp -> closePromo());
+        pv.setOnErrorListener((mp, what, extra) -> {
             host.toast(TiggoText.t("Не удалось воспроизвести видео"));
             closePromo();
             return true;
         });
-        promoVideo.setOnPreparedListener(mp -> promoVideo.start());
-        promoVideo.setVideoPath(f.getAbsolutePath());
+        pv.setOnPreparedListener(mp -> {
+            if (promoVideo == pv) pv.start();
+        });
+        pv.setVideoPath(f.getAbsolutePath());
         addView(promoLayer, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         promoOpen = true;
+        promoLastPos = -1;
+        promoStuck = 0;
+        // nothing else should compete with the video for the UI thread while it plays
+        if (sky != null) sky.setRunning(false);
+        removeCallbacks(ticker);
+        removeCallbacks(musicTicker);
+        removeCallbacks(promoWatch);
+        postDelayed(promoWatch, 4000);
     }
 
     private void closePromo() {
         if (!promoOpen) return;
         promoOpen = false;
+        removeCallbacks(promoWatch);
         try {
             if (promoVideo != null) promoVideo.stopPlayback();
         } catch (Throwable ignored) {
@@ -2649,6 +2719,7 @@ final class TiggoHome extends FrameLayout {
         if (promoLayer != null) removeView(promoLayer);
         promoLayer = null;
         promoVideo = null;
+        if (homeShown && isAttachedToWindow()) startTimers();
     }
 
     // ------------------------------------------------------------------ settings sheets
