@@ -76,7 +76,7 @@ public class SettingsActivity extends Activity {
         {WEATHER, "cloud"},
         {APPS, "apps"},
         {CONTROL_PANEL, "sliders"},
-        {LANGUAGE, "globe"}
+        {LANGUAGE, "globe"},
         {UPDATES, "settings"}
     };
 
