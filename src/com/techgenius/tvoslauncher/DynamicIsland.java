@@ -523,6 +523,16 @@ final class DynamicIsland extends View {
     // ------------------------------------------------------------------ drawing
 
     @Override protected void onDraw(Canvas c) {
+        int saved = c.getSaveCount();
+        try {
+            paint(c);
+        } catch (Throwable t) {
+            c.restoreToCount(saved);
+            Diag.report("DynamicIsland.draw", t);
+        }
+    }
+
+    private void paint(Canvas c) {
         if (suppressed || showP <= 0.01f) return;
         float w0 = getWidth();
         float cx = w0 / 2f;

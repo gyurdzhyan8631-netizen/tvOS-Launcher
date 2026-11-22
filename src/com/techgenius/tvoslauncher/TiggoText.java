@@ -51,6 +51,15 @@ final class TiggoText {
         EN.put("Авто: сезон и время суток", "Auto: season and time of day");
         EN.put("Автоматически", "Automatic");
         EN.put("Автомобиль", "Car");
+        EN.put("Как на Samsung", "Samsung style");
+        EN.put("Контрастный", "Contrast");
+        EN.put("Размер часов", "Clock size");
+        EN.put("Цвет часов", "Clock color");
+        EN.put("Белый", "White");
+        EN.put("Акцентный", "Accent");
+        EN.put("Сиреневый", "Lilac");
+        EN.put("Янтарный", "Amber");
+        EN.put("Голубой", "Sky blue");
         EN.put("Недавние", "Recents");
         EN.put("Organic Maps не установлен", "Organic Maps is not installed");
         EN.put("Маршрут активен", "Route active");

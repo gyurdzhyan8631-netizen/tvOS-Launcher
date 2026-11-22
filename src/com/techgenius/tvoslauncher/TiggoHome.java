@@ -520,19 +520,17 @@ final class TiggoHome extends FrameLayout {
         return new TiggoGlass(radiusPx, (a << 24) | (fill & 0x00FFFFFF), Math.max(1f, k * 1.6f));
     }
 
-    /** iOS 26 Liquid Glass: the dock, the navigation island and the status isl... */
-private Drawable liquid(int radiusPx) {
-    android.graphics.drawable.GradientDrawable gd = new android.graphics.drawable.GradientDrawable();
-    gd.setColor(0x40000000);
-    gd.setCornerRadius(radiusPx);
-    return gd;
-}
+    /** iOS 26 Liquid Glass: the dock, the navigation island and the status island. */
+    private Drawable liquid(int radiusPx) {
+        return new LiquidGlass(radiusPx, Math.max(1f, k * 1.6f));
+    }
 
     /** Glass over the softer, darker backdrop: menus and panels with a lot of text. */
-private Drawable heavyGlass(int radiusPx, int tint) {
-    return new TiggoGlass(radiusPx, tint, Math.max(1f, k * 1.6f), true);
-}
-/** Solid iOS button (system blue, green...) with a touch ripple. */
+    private Drawable heavyGlass(int radiusPx, int tint) {
+        return new TiggoGlass(radiusPx, tint, Math.max(1f, k * 1.6f), true);
+    }
+
+    /** Solid iOS button (system blue, green...) with a touch ripple. */
     private Drawable solid(int radiusPx, int color) {
         GradientDrawable g = new GradientDrawable();
         g.setColor(color);
@@ -752,6 +750,97 @@ private Drawable heavyGlass(int radiusPx, int tint) {
     }
 
     /**
+     * Two more clock faces. 4 = "Samsung": big thin hours with small minutes and the date stacked
+     * at their upper right. 5 = "Contrast": heavy condensed digits, the hours only outlined, the
+     * minutes solid.
+     */
+    private static final class FaceClock extends TextClock {
+        private final int mode;
+        private final int color;
+        private final android.graphics.Paint p = new android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG);
+
+        FaceClock(Context c, int mode, int color) {
+            super(c);
+            this.mode = mode;
+            this.color = color;
+        }
+
+        @Override protected void onDraw(android.graphics.Canvas c) {
+            int saved = c.getSaveCount();
+            try {
+                paint(c);
+            } catch (Throwable e) {
+                c.restoreToCount(saved);
+                Diag.report("FaceClock", e);
+                super.onDraw(c);
+            }
+        }
+
+        private void paint(android.graphics.Canvas c) {
+            CharSequence cs = getText();
+            String t = cs == null ? "" : cs.toString();
+            int colon = t.indexOf(':');
+            if (colon <= 0 || colon >= t.length() - 1) {
+                super.onDraw(c);
+                return;
+            }
+            String hh = t.substring(0, colon);
+            String mm = t.substring(colon + 1);
+            float s = getTextSize();
+            float base = getBaseline();
+            float digit = s * 0.71f;
+            p.setStyle(android.graphics.Paint.Style.FILL);
+            p.setColor(color);
+            if (mode == 4) {
+                p.setTypeface(android.graphics.Typeface.create("sans-serif-light", android.graphics.Typeface.NORMAL));
+                p.setShadowLayer(s * 0.02f, 0, s * 0.01f, 0x55000000);
+                p.setTextSize(s);
+                float wh = p.measureText(hh);
+                float sm = s * 0.36f;
+                float sd = sm * 0.5f;
+                float gap = s * 0.07f;
+                p.setTextSize(sm);
+                float wm = p.measureText(mm);
+                Locale ru = new Locale("ru");
+                Date now = new Date();
+                String l1 = new SimpleDateFormat("EEE", ru).format(now) + ",";
+                String l2 = new SimpleDateFormat("d MMM", ru).format(now);
+                p.setTextSize(sd);
+                float wd = Math.max(p.measureText(l1), p.measureText(l2));
+                float total = wh + gap + Math.max(wm, wd);
+                float x0 = (getWidth() - total) / 2f;
+                float mBase = base - digit + sm * 0.71f;  // the tops of hours and minutes line up
+                p.setTextSize(s);
+                c.drawText(hh, x0, base, p);
+                p.setTextSize(sm);
+                c.drawText(mm, x0 + wh + gap, mBase, p);
+                p.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+                p.setColor((color & 0x00FFFFFF) | 0xDD000000);
+                p.setTextSize(sd);
+                c.drawText(l1, x0 + wh + gap, mBase + sd * 1.7f, p);
+                c.drawText(l2, x0 + wh + gap, mBase + sd * 2.9f, p);
+                p.clearShadowLayer();
+            } else {
+                p.setTypeface(android.graphics.Typeface.create("sans-serif-condensed", android.graphics.Typeface.BOLD));
+                p.setFakeBoldText(true);
+                p.setTextSize(s);
+                float wh = p.measureText(hh);
+                float wm = p.measureText(mm);
+                float gap = s * 0.03f;
+                float x0 = (getWidth() - (wh + gap + wm)) / 2f;
+                p.setStyle(android.graphics.Paint.Style.STROKE);
+                p.setStrokeWidth(Math.max(2f, s * 0.012f));
+                p.setStrokeJoin(android.graphics.Paint.Join.ROUND);
+                c.drawText(hh, x0, base, p);
+                p.setStyle(android.graphics.Paint.Style.FILL);
+                p.setColor((color & 0x00FFFFFF) | 0xB8000000);
+                c.drawText(mm, x0 + wh + gap, base, p);
+                p.setFakeBoldText(false);
+            }
+        }
+    }
+
+    /**
      * The big clock as liquid glass, like the iOS 26 lock screen: tall thin digits and a glass colon
      * that show the wallpaper through them (magnified, as if refracted), a faint light tint and a
      * bright outline that catches the light.
@@ -776,6 +865,17 @@ private Drawable heavyGlass(int radiusPx, int tint) {
         }
 
         @Override protected void onDraw(android.graphics.Canvas c) {
+            int saved = c.getSaveCount();
+            try {
+                paint(c);
+            } catch (Throwable e) {
+                c.restoreToCount(saved);
+                Diag.report("LiquidClock", e);
+                super.onDraw(c);  // plain digits instead
+            }
+        }
+
+        private void paint(android.graphics.Canvas c) {
             CharSequence cs = getText();
             String t = cs == null ? "" : cs.toString();
             int colon = t.indexOf(':');
@@ -860,9 +960,12 @@ private Drawable heavyGlass(int radiusPx, int tint) {
 
     /** Giant thin clock in the middle with the date above it; wallpaper objects overlap its lower part. */
     private View buildClockBlock() {
-        int style = TiggoTheme.get(host, TiggoTheme.K_CLOCK, 1, 3);
+        int style = TiggoTheme.get(host, TiggoTheme.K_CLOCK, 1, 5);
         boolean glassy = style == 1 || style == 2;
-        float timeSize = style == 1 ? 380f : (style == 2 ? 440f : (style == 3 ? 180f : 300f));
+        int clockColor = glassy ? Color.WHITE : TiggoTheme.clockColor(host);
+        float baseSize = style == 1 ? 380f : style == 2 ? 440f : style == 3 ? 180f
+                : style == 4 ? 360f : style == 5 ? 330f : 300f;
+        float timeSize = baseSize * TiggoTheme.clockSize(host) / 100f;
         float dateSize = style == 2 ? 34f : (style == 3 ? 26f : 32f);
         // iOS lock screen: heavy rounded-looking digits; "Classic" keeps a light, airy face
         android.graphics.Typeface thin = glassy
@@ -871,24 +974,28 @@ private Drawable heavyGlass(int radiusPx, int tint) {
         FrameLayout box = new FrameLayout(host);
         box.setClipChildren(false);
 
-        TextClock time = glassy ? new LiquidClock(host) : new TextClock(host);
+        TextClock time = glassy ? new LiquidClock(host)
+                : (style >= 4 ? new FaceClock(host, style, clockColor) : new TextClock(host));
         time.setFormat24Hour("HH:mm");
         time.setFormat12Hour("HH:mm");
-        time.setTextColor(Color.WHITE);
+        time.setTextColor(clockColor);
         time.setTextSize(TypedValue.COMPLEX_UNIT_PX, timeSize * k);
         time.setTypeface(thin);
         time.setIncludeFontPadding(false);
         android.graphics.Paint probe = new android.graphics.Paint();
         probe.setTypeface(thin);
         probe.setTextSize(timeSize * k);
-        time.setMinWidth(Math.round(probe.measureText("00:00")) + m(56));  // never cut the minutes
+        time.setMinWidth(style == 4 ? Math.round(timeSize * k * 1.9f)
+                : (style == 5 ? Math.round(timeSize * k * 2.4f)
+                : Math.round(probe.measureText("00:00")) + m(56)));  // never cut the minutes
         FrameLayout.LayoutParams tl = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.CENTER_HORIZONTAL);
         tl.topMargin = oy + m(113f - 0.2167f * timeSize);  // top of the digits at the same height as in the photo
         box.addView(time, tl);
 
         dateView = new TextView(host);
-        dateView.setTextColor(Color.WHITE);
+        dateView.setTextColor(clockColor);
+        dateView.setVisibility(style == 4 ? GONE : VISIBLE);  // the Samsung face shows the date beside the digits
         dateView.setTextSize(TypedValue.COMPLEX_UNIT_PX, dateSize * k);
         dateView.setTypeface(Ui.font(host, "semibold"));
         dateView.setIncludeFontPadding(false);
@@ -3927,8 +4034,9 @@ private Drawable heavyGlass(int radiusPx, int tint) {
     // ================================================================== pages: sky + widget board
 
     private int clockSize() {
-        int style = TiggoTheme.get(host, TiggoTheme.K_CLOCK, 1, 3);
-        return style == 1 ? 380 : (style == 2 ? 440 : (style == 3 ? 180 : 300));
+        int style = TiggoTheme.get(host, TiggoTheme.K_CLOCK, 1, 5);
+        int base = style == 1 ? 380 : style == 2 ? 440 : style == 3 ? 180 : style == 4 ? 360 : style == 5 ? 330 : 300;
+        return Math.round(base * TiggoTheme.clockSize(host) / 100f);
     }
 
     private int startPage() {

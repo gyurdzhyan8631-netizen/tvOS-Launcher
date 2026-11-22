@@ -973,7 +973,14 @@ public class MainActivity extends Activity {
             prefs.edit().putString("wallpaper", wallStyle).apply();
             setWallpaper(wallStyle);
         }
-        tiggoHome = new TiggoHome(this);
+        Diag.init(this);
+        try {
+            tiggoHome = new TiggoHome(this);
+        } catch (Throwable t) {
+            tiggoHome = null;  // fall back to the classic home and say why
+            Diag.report("TiggoHome", t);
+            return;
+        }
         int dimIndex = launchDimView != null ? root.indexOfChild(launchDimView) : -1;
         if (dimIndex >= 0) root.addView(tiggoHome, dimIndex, match());
         else root.addView(tiggoHome, match());

@@ -100,6 +100,16 @@ final class NavIsland extends LinearLayout {
         }
 
         @Override protected void onDraw(Canvas c) {
+            int saved = c.getSaveCount();
+            try {
+                paint(c);
+            } catch (Throwable t) {
+                c.restoreToCount(saved);
+                Diag.report("NavIsland.glyph", t);
+            }
+        }
+
+        private void paint(Canvas c) {
             float s = Math.min(getWidth(), getHeight());
             if (s <= 0f) return;
             float x = (getWidth() - s) / 2f;
