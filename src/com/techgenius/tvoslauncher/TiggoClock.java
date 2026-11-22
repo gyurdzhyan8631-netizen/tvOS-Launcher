@@ -99,6 +99,16 @@ final class TiggoClock extends View {
     }
 
     @Override protected void onDraw(Canvas c) {
+        int saved = c.getSaveCount();
+        try {
+            paint(c);
+        } catch (Throwable e) {
+            c.restoreToCount(saved);
+            Diag.report("TiggoClock", e);
+        }
+    }
+
+    private void paint(Canvas c) {
         float s = size();
         float top = oy + (113f - 0.2167f * (s / k)) * k;   // same anchor as the built-in clock
         float cx = getWidth() / 2f;

@@ -39,6 +39,7 @@ final class TiggoGlass extends Drawable {
     private final float r;
     private final int tint;
     private final boolean useHeavy;
+    private final boolean liquid;
     private float rimWidth;
     private float rimStrength = 1f;
     private boolean sheen = true;
@@ -49,20 +50,41 @@ final class TiggoGlass extends Drawable {
     private final RectF box = new RectF();
     private final Matrix mtx = new Matrix();
     private final int[] loc = new int[2];
+    private final Paint band = new Paint(Paint.ANTI_ALIAS_FLAG | Paint.FILTER_BITMAP_FLAG);
+    private final Paint edge = new Paint(Paint.ANTI_ALIAS_FLAG);
+    private final Matrix mtx2 = new Matrix();
+    private float bandW;
     private Bitmap shaderFor;
     private BitmapShader shader;
+    private Bitmap shaderFor2;
+    private BitmapShader shader2;
 
     TiggoGlass(float radius, int tint, float density) {
         this(radius, tint, density, false);
     }
 
     TiggoGlass(float radius, int tint, float density, boolean heavyBackdrop) {
+        this(radius, tint, density, heavyBackdrop, false);
+    }
+
+    /**
+     * {@code liquid}: iOS 26 Liquid Glass. The picture behind is magnified a little like a lens and
+     * much more along a band at the edge (the refraction), and the rim catches the light at the top
+     * left and the bottom right.
+     */
+    TiggoGlass(float radius, int tint, float density, boolean heavyBackdrop, boolean liquid) {
+        this.liquid = liquid;
         this.r = radius;
         this.tint = tint;
         this.useHeavy = heavyBackdrop;
         this.rimWidth = Math.max(1f, 1.2f * density);
         rim.setStyle(Paint.Style.STROKE);
         rim.setStrokeWidth(rimWidth);
+        if (liquid) {
+            band.setStyle(Paint.Style.STROKE);
+            edge.setStyle(Paint.Style.STROKE);
+            edge.setStrokeWidth(Math.max(1f, 0.8f * density));
+        }
     }
 
     /** 0..1: how strongly the rim catches the light. */
@@ -86,6 +108,17 @@ final class TiggoGlass extends Drawable {
         float h = Math.max(1f, box.height());
         glow.setShader(new LinearGradient(0, box.top, 0, box.top + Math.min(h, r * 3f + h * 0.25f),
                 0x24FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP));
+        if (liquid) {
+            bandW = Math.max(rimWidth * 5f, Math.min(box.width(), h) * 0.15f);
+            // bright top left and bottom right, faint in between
+            rim.setShader(new LinearGradient(box.left, box.top, box.right, box.bottom,
+                    new int[]{rimA(0xF2), rimA(0x55), rimA(0x12), rimA(0x55), rimA(0xD8)},
+                    new float[]{0f, 0.26f, 0.5f, 0.74f, 1f}, Shader.TileMode.CLAMP));
+            edge.setShader(new LinearGradient(box.left, box.top, box.right, box.bottom,
+                    new int[]{0x70FFFFFF, 0x00FFFFFF, 0x00FFFFFF, 0x40FFFFFF},
+                    new float[]{0f, 0.35f, 0.65f, 1f}, Shader.TileMode.CLAMP));
+            return;
+        }
         rim.setShader(new LinearGradient(box.left, box.top, box.right * 0.35f + box.left * 0.65f, box.bottom,
                 new int[]{rimA(0xB0), rimA(0x38), rimA(0x12), rimA(0x30)},
                 new float[]{0f, 0.35f, 0.7f, 1f}, Shader.TileMode.CLAMP));
@@ -111,8 +144,10 @@ final class TiggoGlass extends Drawable {
             v.getLocationInWindow(loc);
             mtx.setScale(winW / (float) b.getWidth(), winH / (float) b.getHeight());
             mtx.postTranslate(originX - loc[0], originY - loc[1]);
+            if (liquid) mtx.postScale(1.05f, 1.05f, box.centerX(), box.centerY());  // the pane is a lens
             shader.setLocalMatrix(mtx);
             c.drawRoundRect(box, r, r, body);
+            if (liquid && bandW > 0f) drawBand(c, b);
             fill.setColor(tint);
         } else {
             // no picture to blur yet: an opaque-enough frosted fill
@@ -123,6 +158,30 @@ final class TiggoGlass extends Drawable {
         if (sheen) c.drawRoundRect(box, r, r, glow);
         float in = rimWidth / 2f;
         c.drawRoundRect(box.left + in, box.top + in, box.right - in, box.bottom - in, r - in, r - in, rim);
+        if (liquid && bandW > 0f) {
+            // a thin second line on the inner edge of the band: the thickness of the glass
+            float rr = Math.max(0f, r - bandW);
+            if (box.width() > bandW * 2f && box.height() > bandW * 2f) {
+                c.drawRoundRect(box.left + bandW, box.top + bandW, box.right - bandW, box.bottom - bandW, rr, rr, edge);
+            }
+        }
+    }
+
+    /** The edge band: the same backdrop, magnified much more, as a stroked rounded rectangle. */
+    private void drawBand(Canvas c, Bitmap b) {
+        if (shader2 == null || b != shaderFor2) {
+            shader2 = new BitmapShader(b, Shader.TileMode.CLAMP, Shader.TileMode.CLAMP);
+            band.setShader(shader2);
+            shaderFor2 = b;
+        }
+        mtx2.setScale(winW / (float) b.getWidth(), winH / (float) b.getHeight());
+        mtx2.postTranslate(originX - loc[0], originY - loc[1]);
+        mtx2.postScale(1.2f, 1.2f, box.centerX(), box.centerY());
+        shader2.setLocalMatrix(mtx2);
+        band.setStrokeWidth(bandW);
+        float h = bandW / 2f;
+        float rr = Math.max(0f, r - h);
+        c.drawRoundRect(box.left + h, box.top + h, box.right - h, box.bottom - h, rr, rr, band);
     }
 
     @Override public void getOutline(Outline outline) {

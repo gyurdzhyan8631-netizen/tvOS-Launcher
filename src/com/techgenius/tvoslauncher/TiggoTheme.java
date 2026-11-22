@@ -11,7 +11,6 @@ final class TiggoTheme {
     static final String K_MENU = "tiggo9_menu_grad";
     static final String K_CLOCK = "tiggo9_clock_style";
     static final String K_CLOCK_SIZE = "tiggo9_clock_size";
-    static final String K_CLOCK_COLOR = "tiggo9_clock_color";
     static final String K_WEATHER = "tiggo9_weather_style";
     static final String K_WIDGET_OFF = "tiggo9_widget_off_";
     static final String K_TILE_GLASS = "tiggo9_tile_glass";
@@ -23,10 +22,9 @@ final class TiggoTheme {
     static final String[] THEME_NAMES = {
             "Стильная", "Тёмная", "Яркая", "Природа", "День", "Рассвет", "Ночь", "Авто (по солнцу)"};
     static final String[] CLOCK_NAMES = {"Классический", "Стеклянный", "Крупный", "Компактный",
-            "Как на Samsung", "Контрастный"};
+            "Duo", "iOS 26", "Контур"};
     /** Clock size in percent. */
-    static final int[] CLOCK_SIZES = {70, 80, 90, 100, 110, 120, 130};
-    static final String[] CLOCK_COLOR_NAMES = {"Белый", "Акцентный", "Сиреневый", "Янтарный", "Зелёный", "Голубой"};
+    static final int[] CLOCK_SIZES = {50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150, 170, 200};
     static final String[] WEATHER_NAMES = {"Два блока", "Компактная", "Минимальная"};
     static final String[] MENU_NAMES = {"Синий", "Фиолетовый", "Графитовый", "Зелёный"};
     static final int[] ACCENTS = {0xFF1C6BFF, 0xFF9B4DFF, 0xFFFF4D9D, 0xFFFF9F1A, 0xFF4CD35A};
@@ -57,21 +55,9 @@ final class TiggoTheme {
         return Profiles.homePrefs(c);
     }
 
-    /** Size of the big clock in percent (70..130). */
+    /** Size of the big clock in percent (40..200). */
     static int clockSize(Context c) {
-        return Math.max(70, Math.min(130, prefs(c).getInt(K_CLOCK_SIZE, 100)));
-    }
-
-    /** Colour of the clock digits for the faces that are not glass. */
-    static int clockColor(Context c) {
-        switch (get(c, K_CLOCK_COLOR, 0, 5)) {
-            case 1: return ACCENTS[get(c, K_ACCENT, 0, 4)];
-            case 2: return 0xFFD9B8F0;
-            case 3: return 0xFFFFC857;
-            case 4: return 0xFF7EE08F;
-            case 5: return 0xFF8AD4FF;
-            default: return 0xFFFFFFFF;
-        }
+        return Math.max(40, Math.min(200, prefs(c).getInt(K_CLOCK_SIZE, 100)));
     }
 
     static int get(Context c, String key, int def, int max) {
@@ -211,8 +197,7 @@ final class TiggoTheme {
     static String signature(Context c) {
         SharedPreferences p = prefs(c);
         return theme(c) + "|" + get(c, K_ACCENT, 0, 4) + "|" + get(c, K_MENU, 0, 3) + "|"
-                + get(c, K_CLOCK, 1, 5) + "|" + clockSize(c) + "|" + get(c, K_CLOCK_COLOR, 0, 5) + "|"
-                + get(c, K_WEATHER, 0, 2) + "|"
+                + get(c, K_CLOCK, 1, 6) + "|" + clockSize(c) + "|" + get(c, K_WEATHER, 0, 2) + "|"
                 + p.getBoolean(K_WIDGET_OFF + "weather", false) + p.getBoolean(K_WIDGET_OFF + "nav", false)
                 + p.getBoolean(K_WIDGET_OFF + "music", false) + "|"
                 + p.getBoolean(K_TILE_GLASS, true) + "|" + p.getString(K_ICON_PACK, "auto") + "|"

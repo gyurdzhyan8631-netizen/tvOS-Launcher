@@ -763,8 +763,7 @@ public class TiggoSettingsActivity extends Activity {
         c.addView(settingRow(null, TiggoText.t("Сбросить оформление"), null, v -> {
             SharedPreferences.Editor ed = prefs.edit();
             ed.remove(TiggoTheme.K_THEME).remove(TiggoTheme.K_ACCENT).remove(TiggoTheme.K_MENU)
-                    .remove(TiggoTheme.K_CLOCK).remove(TiggoTheme.K_CLOCK_SIZE).remove(TiggoTheme.K_CLOCK_COLOR)
-                    .remove(TiggoTheme.K_WEATHER);
+                    .remove(TiggoTheme.K_CLOCK).remove(TiggoTheme.K_CLOCK_SIZE).remove(TiggoTheme.K_WEATHER);
             for (String id : new String[]{"weather", "nav", "music"}) ed.remove(TiggoTheme.K_WIDGET_OFF + id);
             ed.apply();
             toast(TiggoText.t("Оформление сброшено"));
@@ -872,15 +871,15 @@ public class TiggoSettingsActivity extends Activity {
                 v -> openSub(this::pageIconPack), true));
         list.addView(rowDivider());
         list.addView(settingRow(TiggoIcons.clockFace(m(52), Color.WHITE), TiggoText.t("Стиль часов"),
-                TiggoText.t(TiggoTheme.CLOCK_NAMES[TiggoTheme.get(this, TiggoTheme.K_CLOCK, 1, 5)]),
+                TiggoText.t(TiggoTheme.CLOCK_NAMES[TiggoTheme.get(this, TiggoTheme.K_CLOCK, 1, 6)]),
                 v -> openSub(() -> pageChoice(TiggoText.t("Стиль часов"), TiggoTheme.CLOCK_NAMES,
-                        TiggoTheme.get(this, TiggoTheme.K_CLOCK, 1, 5), i -> {
+                        TiggoTheme.get(this, TiggoTheme.K_CLOCK, 1, 6), i -> {
                             TiggoTheme.put(this, TiggoTheme.K_CLOCK, i);
                             return false;
                         })), true));
         list.addView(rowDivider());
         final String[] clockSizeNames = new String[TiggoTheme.CLOCK_SIZES.length];
-        int clockSizeAt = 3;
+        int clockSizeAt = 5;
         for (int q = 0; q < clockSizeNames.length; q++) {
             clockSizeNames[q] = TiggoTheme.CLOCK_SIZES[q] + "%";
             if (TiggoTheme.CLOCK_SIZES[q] == TiggoTheme.clockSize(this)) clockSizeAt = q;
@@ -892,14 +891,6 @@ public class TiggoSettingsActivity extends Activity {
                     TiggoTheme.put(this, TiggoTheme.K_CLOCK_SIZE, TiggoTheme.CLOCK_SIZES[i]);
                     return false;
                 })), true));
-        list.addView(rowDivider());
-        list.addView(settingRow(TiggoIcons.sun(m(52), Color.WHITE), TiggoText.t("Цвет часов"),
-                TiggoText.t(TiggoTheme.CLOCK_COLOR_NAMES[TiggoTheme.get(this, TiggoTheme.K_CLOCK_COLOR, 0, 5)]),
-                v -> openSub(() -> pageChoice(TiggoText.t("Цвет часов"), TiggoTheme.CLOCK_COLOR_NAMES,
-                        TiggoTheme.get(this, TiggoTheme.K_CLOCK_COLOR, 0, 5), i -> {
-                            TiggoTheme.put(this, TiggoTheme.K_CLOCK_COLOR, i);
-                            return false;
-                        })), true));
         list.addView(rowDivider());
         list.addView(settingRow(TiggoIcons.widgets(m(52), Color.WHITE), TiggoText.t("Виджеты главного экрана"),
                 TiggoText.t("Изменить"), v -> {
