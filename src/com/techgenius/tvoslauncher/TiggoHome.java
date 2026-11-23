@@ -353,7 +353,8 @@ final class TiggoHome extends FrameLayout {
         layer.setClipChildren(false);
         layer.setClipToPadding(false);
         uiLayer = layer;
-        addView(layer, 4, new FrameLayout.LayoutParams(
+        // above wallpaper, clock and tint (three children now that the depth layer is gone)
+        addView(layer, Math.min(3, getChildCount()), new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
         int prevPage = pager != null ? pager.current() : -1;
