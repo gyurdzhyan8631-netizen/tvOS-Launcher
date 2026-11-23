@@ -47,8 +47,26 @@ final class TiggoClock extends View {
     /** Mockup size of the digits: new styles know their own base, older ones pass theirs in. */
     static float mockSize(Context c, float olderBase) {
         int s = TiggoTheme.get(c, TiggoTheme.K_CLOCK, 1, TiggoTheme.CLOCK_NAMES.length - 1);
-        float base = s == DUO ? 300f : (s == LIQUID ? 420f : (s == OUTLINE ? 400f : olderBase));
-        return base * scale(c);
+        float base = s == DUO ? 300f : (s == LIQUID ? 340f : (s == OUTLINE ? 310f : olderBase));
+        float size = base * scale(c);
+        // keep the digits above the widgets: their bottom stays at about 430 of 941
+        if (s >= DUO) size = Math.min(size, (430f - 118f) / digitRatio(s));
+        return size;
+    }
+
+    /** Height of the digits as a share of the font size, for each face. */
+    static float digitRatio(int style) {
+        return style == DUO ? 0.74f : (style == LIQUID ? 0.76f : 0.87f);
+    }
+
+    /**
+     * The size the board uses to find its top edge below this face: the digits start at 118 and end
+     * at 118 + ratio * size, the board follows 26 lower.
+     */
+    static float boardSize(Context c, float olderBase) {
+        int s = TiggoTheme.get(c, TiggoTheme.K_CLOCK, 1, TiggoTheme.CLOCK_NAMES.length - 1);
+        if (s < DUO) return mockSize(c, olderBase);
+        return (digitRatio(s) * mockSize(c, olderBase) + 9f) / 0.7233f;
     }
 
     TiggoClock(Context c, int style, float unit, int offsetY) {
@@ -109,13 +127,33 @@ final class TiggoClock extends View {
     }
 
     private void paint(Canvas c) {
-        float s = size();
-        float top = oy + (113f - 0.2167f * (s / k)) * k;   // same anchor as the built-in clock
         float cx = getWidth() / 2f;
         String[] t = time();
+        float s = fit(size(), t);
+        float y0 = oy + 118f * k;  // the digits start here, whatever the face
+        float top = style == OUTLINE ? y0 + 0.066f * s : y0 - 0.04f * s;
         if (style == DUO) drawDuo(c, t, s, top, cx);
         else if (style == LIQUID) drawLiquid(c, t, s, top, cx);
         else drawOutline(c, t, s, top, cx);
+    }
+
+    /** Shrinks a size that would make the digits wider than the screen. */
+    private float fit(float s, String[] t) {
+        if (style == DUO || getWidth() <= 0) return s;
+        float w;
+        if (style == OUTLINE) {
+            p.setTypeface(Typeface.create("sans-serif-condensed", Typeface.BOLD));
+            p.setTextSize(s);
+            p.setTextScaleX(0.78f);
+            w = p.measureText(t[0]) + p.measureText(t[1]);
+            p.setTextScaleX(1f);
+        } else {
+            p.setTypeface(Ui.font(getContext(), "display"));
+            p.setTextSize(s);
+            w = p.measureText(t[0] + t[1]) * 0.92f + s * 0.25f;
+        }
+        float limit = getWidth() * 0.90f;
+        return w > limit ? s * limit / Math.max(1f, w) : s;
     }
 
     /** Big thin hours, small raised minutes, two-line date at the right. */
@@ -214,6 +252,6 @@ final class TiggoClock extends View {
         p.setTextScaleX(1f);
         p.setColor(0xB3FFFFFF);
         p.setTypeface(Ui.font(getContext(), "semibold"));
-        date(p, c, "EEEE, d MMMM", cx, top - s * 0.05f, s * 0.07f, true);
+        date(p, c, "EEEE, d MMMM", cx, top - s * 0.10f, s * 0.07f, true);
     }
 }

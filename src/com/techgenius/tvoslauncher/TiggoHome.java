@@ -2878,8 +2878,15 @@ private Drawable heavyGlass(int radiusPx, int tint) {
         LinearLayout panel = new LinearLayout(host);
         panel.setOrientation(LinearLayout.VERTICAL);
         panel.setPadding(m(32), m(26), m(32), m(28));
-        panel.setBackground(heavyGlass(m(38), 0x5C1C1C26));
         panel.setClickable(true);
+        // the glass sits on a scroll container: a long list scrolls instead of leaving the screen
+        android.widget.ScrollView scroller = new android.widget.ScrollView(host);
+        scroller.setVerticalScrollBarEnabled(false);
+        scroller.setOverScrollMode(OVER_SCROLL_NEVER);
+        scroller.setBackground(heavyGlass(m(38), 0x5C1C1C26));
+        scroller.setClipToOutline(true);
+        scroller.addView(panel, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         TextView heading = text(title, 36, true);
         panel.addView(heading, lp(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         int width = Math.min(m(mockWidth),
@@ -2887,8 +2894,9 @@ private Drawable heavyGlass(int radiusPx, int tint) {
         FrameLayout.LayoutParams plp = new FrameLayout.LayoutParams(width,
                 ViewGroup.LayoutParams.WRAP_CONTENT,
                 top ? (Gravity.TOP | Gravity.CENTER_HORIZONTAL) : Gravity.CENTER);
-        if (top) plp.topMargin = m(30);
-        sheetLayer.addView(panel, plp);
+        plp.topMargin = top ? m(30) : m(20);
+        plp.bottomMargin = m(20);
+        sheetLayer.addView(scroller, plp);
         sheetLayer.setVisibility(VISIBLE);
         sheetOpen = true;
         return panel;
@@ -3434,7 +3442,7 @@ private Drawable heavyGlass(int radiusPx, int tint) {
             android.util.DisplayMetrics dm = host.getResources().getDisplayMetrics();
             float screen = dm.widthPixels / (float) Math.max(1, dm.heightPixels);
             float shape = src.getWidth() / (float) Math.max(1, src.getHeight());
-            if (Math.abs(shape / screen - 1f) < 0.18f) return src;  // close enough: a plain crop looks fine
+            if (Math.abs(shape / screen - 1f) < 0.30f) return src;  // close enough: a plain crop looks fine
             int outW = 1920;
             int outH = Math.max(540, Math.round(outW / screen));
             Bitmap out = Bitmap.createBitmap(outW, outH, Bitmap.Config.ARGB_8888);
@@ -3457,7 +3465,20 @@ private Drawable heavyGlass(int radiusPx, int tint) {
             float dh = src.getHeight() * fit;
             android.graphics.RectF dst = new android.graphics.RectF((outW - dw) / 2f, (outH - dh) / 2f,
                     (outW + dw) / 2f, (outH + dh) / 2f);
+            // soft edges where the picture meets the blurred background
+            int layer = c.saveLayer(dst, null);
             c.drawBitmap(src, null, dst, soft);
+            boolean sides = dw < outW - 2f;
+            float edge = Math.max(8f, (sides ? dw : dh) * 0.06f);
+            android.graphics.Paint mask = new android.graphics.Paint();
+            mask.setXfermode(new android.graphics.PorterDuffXfermode(android.graphics.PorterDuff.Mode.DST_IN));
+            float len = sides ? dw : dh;
+            mask.setShader(new LinearGradient(sides ? dst.left : 0, sides ? 0 : dst.top,
+                    sides ? dst.right : 0, sides ? 0 : dst.bottom,
+                    new int[]{0x00000000, 0xFF000000, 0xFF000000, 0x00000000},
+                    new float[]{0f, edge / len, 1f - edge / len, 1f}, Shader.TileMode.CLAMP));
+            c.drawRect(dst, mask);
+            c.restoreToCount(layer);
             src.recycle();
             return out;
         } catch (Throwable t) {
@@ -4000,7 +4021,7 @@ private Drawable heavyGlass(int radiusPx, int tint) {
 
     private int clockSize() {
         int style = TiggoTheme.get(host, TiggoTheme.K_CLOCK, 1, 6);
-        if (style >= TiggoClock.DUO) return Math.round(TiggoClock.mockSize(host, 300f));
+        if (style >= TiggoClock.DUO) return Math.round(TiggoClock.boardSize(host, 300f));
         float base = style == 1 ? 380f : (style == 2 ? 440f : (style == 3 ? 180f : 300f));
         return Math.round(base * TiggoTheme.clockSize(host) / 100f);
     }
@@ -4064,7 +4085,7 @@ private Drawable heavyGlass(int radiusPx, int tint) {
         col.setClipChildren(false);
         int clockFace = TiggoTheme.get(host, TiggoTheme.K_CLOCK, 1, 6);
         boolean faceClock = clockFace >= TiggoClock.DUO;  // Duo, iOS 26, Outline draw themselves
-        float faceSize = TiggoClock.mockSize(host, 300f);
+        float faceSize = TiggoClock.boardSize(host, 300f);
         if (faceClock) {
             page.addView(new TiggoClock(host, clockFace, k, oy), new FrameLayout.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
