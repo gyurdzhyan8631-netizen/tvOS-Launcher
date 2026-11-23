@@ -109,7 +109,7 @@ final class TiggoGlass extends Drawable {
         glow.setShader(new LinearGradient(0, box.top, 0, box.top + Math.min(h, r * 3f + h * 0.25f),
                 0x24FFFFFF, 0x00FFFFFF, Shader.TileMode.CLAMP));
         if (liquid) {
-            bandW = Math.max(rimWidth * 5f, Math.min(box.width(), h) * 0.15f);
+            bandW = 0f;  // no inner band or second line: they read as a second bar inside the pane
             // bright top left and bottom right, faint in between
             rim.setShader(new LinearGradient(box.left, box.top, box.right, box.bottom,
                     new int[]{rimA(0xF2), rimA(0x55), rimA(0x12), rimA(0x55), rimA(0xD8)},
